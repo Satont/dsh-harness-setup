@@ -34,6 +34,21 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 | `scripts/restore-profile.sh` | Build a fresh profile from this repo (backs up existing manifests) |
 | `tools/model-tuning/` | Context-window and compaction tuning generator |
 
+## Screenshots
+
+![Main UI](docs/screenshots/ui-dark.jpg)
+
+| Limits page | Sidebar card |
+|---|---|
+| ![Limits panel](docs/screenshots/limits-panel.jpg) | ![Limits card](docs/screenshots/limits-sidebar.jpg) |
+
+| Whale-chan | Phone |
+|---|---|
+| ![Whale-chan](docs/screenshots/whale-chan.jpg) | ![Mobile](docs/screenshots/mobile.jpg) |
+
+Screenshots are sanitized: balances and account identifiers are hidden, and the sidebar is
+cropped where session names would appear. See `docs/screenshots/README.md`.
+
 ## Quick restore
 
 ```bash
