@@ -1,0 +1,22 @@
+[Unit]
+Description=DeepSeek Harness desktop server
+Documentation=file:%h/dsh-workspace/docs/OPERATIONS.md
+# Opt-in alternative to ~/.config/autostart/dsh-harness.desktop. Do not enable both.
+After=graphical-session.target
+PartOf=graphical-session.target
+# Failure back-off: at most 5 starts per minute before systemd gives up.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# --server-only stays in the foreground and stops the DSH child when the unit stops.
+ExecStart=%h/.local/bin/dsh-desktop --server-only
+# dsh usually lives outside the systemd user PATH (bunx cache / bun global); the
+# launcher falls back to known install locations, but a normal PATH helps too.
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# dsh-share — publish a local DSH artifact as a public, sandboxed HTTPS page.
+#
+# The artifact store (~/.dsh/artifacts) is private to this machine; this script
+# copies one artifact snapshot to the VPS static share host
+# (YOUR_PUBLIC_HOST) under an unguessable token filename and prints
+# the public URL. Pages are served with `Content-Security-Policy: sandbox` and
+# `default-src 'none'`, so they never run with DSH cookies, same-origin access
+# or network reach — a self-contained artifact only.
+#
+# Usage:
+#   dsh-share <name|file>          publish an artifact (name without .html or a path)
+#   dsh-share --latest             publish the newest artifact in the store
+#   dsh-share --list               list published pages (local index)
+#   dsh-share --revoke <token|url> delete a published page (link stops working)
+#   dsh-share --prune              delete pages whose TTL expired
+#   dsh-share --ttl 7d …           TTL: 1h / 12h / 7d / 30d (default 30d)
+#
+# Env: DSH_ARTIFACT_DIR, DSH_SHARE_SSH_HOST (default dsh-vps),
+#      DSH_SHARE_REMOTE_DIR (default ${HOME}/dsh-share),
+#      DSH_SHARE_PUBLIC_BASE (default https://YOUR_PUBLIC_HOST)
+set -uo pipefail
+
+ARTIFACT_DIR=${DSH_ARTIFACT_DIR:-$HOME/.dsh/artifacts}
+SSH_HOST=${DSH_SHARE_SSH_HOST:-dsh-vps}
+REMOTE_DIR=${DSH_SHARE_REMOTE_DIR:-${HOME}/dsh-share}
+PUBLIC_BASE=${DSH_SHARE_PUBLIC_BASE:-https://YOUR_PUBLIC_HOST}
+INDEX=${DSH_SHARE_INDEX:-$HOME/.dsh/share-index.json}
+
+die() { printf 'dsh-share: %s\n' "$*" >&2; exit 1; }
+log() { printf 'dsh-share: %s\n' "$*" >&2; }
+
+ttl_seconds() {
+  case ${1:-30d} in
+    *h) echo $(( ${1%h} * 3600 )) ;;
+    *d) echo $(( ${1%d} * 86400 )) ;;
+    *s) echo "${1%s}" ;;
+    *)  echo 2592000 ;;
+  esac
+}
+
+slugify() {
+  local s=$1
+  s=$(printf '%s' "$s" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\+/-/g; s/^-//; s/-$//')
+  printf '%s' "${s:0:40}"
+}
+
+resolve_artifact() {
+  local arg=$1
+  if [[ -f $arg ]]; then printf '%s\n' "$(realpath "$arg")"; return 0; fi
+  local candidate=$ARTIFACT_DIR/${arg%.html}.html
+  if [[ -f $candidate ]]; then printf '%s\n' "$candidate"; return 0; fi
+  # fall back to a case-insensitive basename or <title> match
+  local match
+  match=$(python3 - "$ARTIFACT_DIR" "$arg" <<'PY'
+import os,sys,re,html,glob
+root,needle=sys.argv[1],sys.argv[2].lower()
+for path in sorted(glob.glob(os.path.join(root,"*.html")), key=os.path.getmtime, reverse=True):
+    base=os.path.basename(path)[:-5].lower()
+    if base==needle or needle in base:
+        print(path); raise SystemExit
+    try:
+        head=open(path,encoding="utf-8",errors="replace").read(8192)
+    except OSError:
+        continue
+    m=re.search(r"<title[^>]*>(.*?)</title>",head,re.I|re.S)
+    title=html.unescape(re.sub(r"<[^>]*>","",m.group(1))).strip().lower() if m else ""
+    if title and needle in title:
+        print(path); raise SystemExit
+PY
+)
+  [[ -n $match ]] && printf '%s\n' "$match"
+}
+
+entry_list() { [[ -f $INDEX ]] || echo '[]'; cat "$INDEX"; }
+
+write_index() { python3 - "$INDEX" "$1" <<'PY'
+import json,sys
+json.dump(sys.argv[2:], open(sys.argv[1],"w"), ensure_ascii=False, indent=2)
+PY
+}
+
+action_list() {
+  entry_list | python3 -c "
+import json,sys,datetime
+items=json.load(sys.stdin)
+if not items: print('no shared pages'); raise SystemExit
+for it in items:
+    exp=it.get('expiresAt')
+    when=datetime.datetime.fromtimestamp(exp).strftime('%Y-%m-%d') if exp else 'never'
+    print(it.get('token',''), ' ', it.get('title',''), ' ', it.get('url',''), '  (expires', when + ')')
+"
+}
+
+action_revoke() {
+  local token=${1:-}
+  [[ -n $token ]] || die "--revoke needs a token or URL"
+  token=${token##*/}; token=${token%.html}
+  python3 - "$INDEX" "$token" <<'PY'
+import json,sys
+path,token=sys.argv[1],sys.argv[2]
+items=json.load(open(path)) if __import__("os").path.exists(path) else []
+keep=[i for i in items if i.get("token")!=token]
+json.dump(keep, open(path,"w"), ensure_ascii=False, indent=2)
+print("revoked" if len(keep)!=len(items) else "not found")
+PY
+  ssh -o BatchMode=yes "$SSH_HOST" "rm -f '$REMOTE_DIR/$token.html'" 2>/dev/null || true
+  log "deleted $token.html on $SSH_HOST"
+}
+
+action_prune() {
+  python3 - "$INDEX" <<'PY'
+import json,sys,os,time,subprocess
+path=sys.argv[1]
+items=json.load(open(path)) if os.path.exists(path) else []
+now=time.time(); keep=[]; dead=[]
+for it in items:
+    exp=it.get("expiresAt") or 0
+    (dead if exp and exp<now else keep).append(it)
+json.dump(keep, open(path,"w"), ensure_ascii=False, indent=2)
+for it in dead:
+    subprocess.run(["ssh","-o","BatchMode=yes",os.environ.get("DSH_SHARE_SSH_HOST","dsh-vps"),
+                    f"rm -f '{os.environ.get('DSH_SHARE_REMOTE_DIR','${HOME}/dsh-share')}/{it['token']}.html'"])
+print(f"pruned {len(dead)}")
+PY
+}
+
+mode=publish; ARG=; TTL=30d
+while (($#)); do
+  case $1 in
+    --latest) mode=latest ;;
+    --list) mode=list ;;
+    --revoke) shift; mode=revoke; ARG=${1:?} ;;
+    --prune) mode=prune ;;
+    --ttl) shift; TTL=${1:?} ;;
+    -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*) die "unknown option $1" ;;
+    *) ARG=$1 ;;
+  esac
+  shift
+done
+
+case $mode in
+  list) action_list; exit 0 ;;
+  revoke) action_revoke "$ARG"; exit 0 ;;
+  prune) action_prune; exit 0 ;;
+esac
+
+if [[ $mode == latest ]]; then
+  ARG=$(ls -t "$ARTIFACT_DIR"/*.html 2>/dev/null | head -n1) || true
+  [[ -n $ARG ]] || die "no artifacts in $ARTIFACT_DIR"
+else
+  [[ -n $ARG ]] || die "usage: dsh-share <artifact-name|file> (see --help)"
+fi
+
+FILE=$(resolve_artifact "$ARG")
+[[ -n $FILE && -f $FILE ]] || die "artifact not found: $ARG (store: $ARTIFACT_DIR)"
+BYTES=$(stat -c%s "$FILE")
+(( BYTES <= 16*1024*1024 )) || die "artifact is larger than 16 MiB"
+head -c 4096 "$FILE" | grep -qiE '<!doctype html|<html' || die "not an HTML document: $FILE"
+
+TITLE=$(python3 - "$FILE" <<'PY'
+import re,sys,html
+s=open(sys.argv[1],encoding="utf-8",errors="replace").read(16384)
+m=re.search(r"<title[^>]*>(.*?)</title>",s,re.I|re.S)
+t=html.unescape(re.sub(r"<[^>]*>","",m.group(1))).strip() if m else ""
+print(t)
+PY
+)
+[[ -n $TITLE ]] || TITLE=$(basename "${FILE%.html}")
+TOKEN=$(openssl rand -hex 16)
+SLUG=$(slugify "$TITLE"); [[ -n $SLUG ]] || SLUG=artifact
+REMOTE_NAME="${SLUG}-${TOKEN:0:8}.html"
+
+log "publishing $(basename "$FILE") ($(( BYTES/1024 )) KiB) as \"$TITLE\""
+scp -q -o BatchMode=yes "$FILE" "$SSH_HOST:$REMOTE_DIR/$REMOTE_NAME" || die "scp to $SSH_HOST failed"
+URL="$PUBLIC_BASE/$REMOTE_NAME"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "$URL")
+[[ $CODE == 200 ]] || die "public URL returned HTTP $CODE: $URL"
+
+EXP=$(( $(date +%s) + $(ttl_seconds "$TTL") ))
+python3 - "$INDEX" "$REMOTE_NAME" "$TOKEN" "$URL" "$TITLE" "$FILE" "$EXP" <<'PY'
+import json,sys,os
+path,remote,token,url,title,file,exp=sys.argv[1:]
+items=json.load(open(path)) if os.path.exists(path) else []
+items.append({"token":remote[:-5],"remote":remote,"url":url,"title":title,"artifact":file,"expiresAt":int(exp)})
+json.dump(items, open(path,"w"), ensure_ascii=False, indent=2)
+PY
+log "shared: $URL"
+printf '%s\n' "$URL"

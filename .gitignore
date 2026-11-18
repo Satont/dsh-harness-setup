@@ -1,0 +1,40 @@
+# dependencies / build caches
+node_modules/
+.pnpm-store/
+*.tsbuildinfo
+dist/
+
+# secrets and local state
+.env
+.env.*
+!.env.example
+!.env.template
+*.bak
+*.bak-*
+.credentials.yaml
+.credentials*
+auth.json
+vps.conf
+*.pairing.txt
+*.token
+*.pem
+*.key
+id_rsa
+id_ed25519
+known_hosts
+share-index.json
+vps.env
+
+# DSH runtime state
+logs/
+*.log
+storages/
+sessions/
+artifacts/
+cache/
+
+# OS/editor noise
+.DS_Store
+.Thumbs.db
+*.swp
+*~

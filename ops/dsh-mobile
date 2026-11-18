@@ -1,0 +1,581 @@
+#!/usr/bin/env bash
+# dsh-mobile — удобный доступ к твоему DeepSeek Harness с телефона.
+#
+# Поднимает ОТДЕЛЬНЫЙ web-инстанс DSH, привязанный к приватному адресу
+# Tailscale (по умолчанию) или к LAN-адресу, и печатает одноразовую
+# token-ссылку + QR-код для телефона. Cookie после первого открытия живёт
+# 30 дней, поэтому сканировать QR нужно только после перезапуска сервера.
+#
+# Usage:
+#   dsh-mobile                 start (tailscale) + QR
+#   dsh-mobile --lan           start bound to the LAN IPv4 instead
+#   dsh-mobile --https         HTTPS через `tailscale serve` (нужен operator)
+#   dsh-mobile --port 3081     override port
+#   dsh-mobile --status        server/URL state (+ QR)
+#   dsh-mobile --qr            print QR of the stored URL
+#   dsh-mobile --share         QR for the running dsh-desktop server via the second
+#                              listener (127.0.0.1 + Tailscale IP, one process)
+#   dsh-mobile --funnel        public HTTPS via Tailscale Funnel + local Basic-Auth
+#                              (телефону НЕ нужен Tailscale — работает вместе с Happ)
+#   dsh-mobile --funnel-creds  показать логин/пароль Basic-Auth
+#   dsh-mobile --vps           публичный HTTPS с собственного VPS (Traefik + LE cert),
+#                              самый стабильный вариант; телефону VPN/Tailscale не нужен
+#   dsh-mobile --pinggy        публичный HTTPS через pinggy.io (SSH, 60 минут)
+#                              (если Tailscale Funnel блокируется сетью; работает с Happ)
+#   dsh-mobile --doctor        проверить token/cookie на loopback, tailnet и funnel
+#   dsh-mobile --stop          stop the managed server/funnel + undo serve config
+#   dsh-mobile -h              this help
+#
+# Env: DSH_MOBILE_PORT (3081), DSH_MOBILE_HOST, DSH_MOBILE_WAIT (60),
+#      DSH_MOBILE_DSH (explicit dsh binary).
+set -u
+
+PROG=dsh-mobile
+PORT=${DSH_MOBILE_PORT:-3081}
+WAIT_SECONDS=${DSH_MOBILE_WAIT:-60}
+STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/dsh-mobile
+PID_FILE=$STATE_DIR/server.pid
+URL_FILE=$STATE_DIR/server.url
+MODE_FILE=$STATE_DIR/mode
+LOG_FILE=$STATE_DIR/server.log
+FUNNEL_PID_FILE=$STATE_DIR/funnel-proxy.pid
+FUNNEL_URL_FILE=$STATE_DIR/funnel.url
+FUNNEL_PORT=${DSH_MOBILE_FUNNEL_PORT:-3100}
+FUNNEL_AUTH_FILE=$STATE_DIR/funnel-auth
+SSH_PID_FILE=$STATE_DIR/ssh-tunnel.pid
+SSH_LOG=$STATE_DIR/ssh-tunnel.log
+SSH_URL_FILE=$STATE_DIR/ssh-tunnel.url
+APP_CLASS=DshHarness
+
+mkdir -p "$STATE_DIR"
+
+log() { printf '%s: %s\n' "$PROG" "$*" >&2; }
+die() { printf '%s: %s\n' "$PROG" "$*" >&2; exit 1; }
+
+usage() { sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; }
+
+# ------------------------------------------------------------------ binaries ---
+resolve_dsh() {
+  local candidate pattern
+  if [[ -n ${DSH_MOBILE_DSH:-} ]]; then
+    [[ -x $DSH_MOBILE_DSH ]] || die "DSH_MOBILE_DSH=$DSH_MOBILE_DSH is not executable"
+    printf '%s\n' "$DSH_MOBILE_DSH"; return 0
+  fi
+  candidate=$(command -v dsh 2>/dev/null || true)
+  if [[ -n $candidate && -x $candidate ]]; then printf '%s\n' "$candidate"; return 0; fi
+  for pattern in \
+    "$HOME/.local/share/mise/installs/node/"*/bin/dsh \
+    "$HOME/.local/share/mise/shims/dsh" \
+    '/tmp/bunx-*/@deepseek-ai/dsh@latest/node_modules/.bin/dsh' \
+    "$HOME/.bun/install/global/node_modules/.bin/dsh" "$HOME/.bun/bin/dsh" \
+    "$HOME/.npm-global/bin/dsh" "$HOME/.local/bin/dsh" \
+    '/usr/local/bin/dsh' '/usr/bin/dsh'; do
+    while IFS= read -r candidate; do
+      if [[ -n $candidate && -x $candidate ]]; then printf '%s\n' "$candidate"; return 0; fi
+    done < <(compgen -G "$pattern" 2>/dev/null || true)
+  done
+  die "cannot find the dsh binary (install @deepseek-ai/dsh or set DSH_MOBILE_DSH)"
+}
+
+resolve_node() {
+  local candidate pattern
+  candidate=$(command -v node 2>/dev/null || true)
+  if [[ -n $candidate && -x $candidate ]]; then printf '%s\n' "$candidate"; return 0; fi
+  for pattern in \
+    "$HOME/.local/share/mise/installs/node/"*/bin/node \
+    "$HOME/.bun/bin/node" "$HOME/.nvm/versions/node/"*/bin/node \
+    /usr/local/bin/node /usr/bin/node; do
+    while IFS= read -r candidate; do
+      if [[ -n $candidate && -x $candidate ]]; then printf '%s\n' "$candidate"; return 0; fi
+    done < <(compgen -G "$pattern" 2>/dev/null || true)
+  done
+}
+
+prepare_runtime() {
+  local login_path node_bin
+  if [[ -n ${SHELL:-} && -x ${SHELL:-} ]]; then
+    login_path=$(timeout 3 "$SHELL" -lc 'printf %s "$PATH"' 2>/dev/null || true)
+    [[ -n $login_path ]] && PATH=$login_path
+  fi
+  node_bin=$(resolve_node || true)
+  [[ -n $node_bin ]] && PATH="$(dirname "$node_bin"):$PATH"
+  DSH_BIN=$(resolve_dsh)
+  PATH="$(dirname "$DSH_BIN"):$HOME/.local/bin:$PATH"
+  export PATH
+}
+
+# --------------------------------------------------------------------- network ---
+tailscale_ip() {
+  command -v tailscale >/dev/null 2>&1 || return 1
+  tailscale ip -4 2>/dev/null | head -n1
+}
+
+tailscale_dns() {
+  command -v tailscale >/dev/null 2>&1 || return 1
+  tailscale status --json 2>/dev/null | node -e '
+    let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+      try{const j=JSON.parse(s);const n=j?.Self?.DNSName||"";process.stdout.write(n.replace(/\.$/,""))}catch{}
+    })' 2>/dev/null
+}
+
+lan_ip() {
+  ip route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -n1
+}
+
+qr() {
+  local url=$1
+  if command -v qrencode >/dev/null 2>&1; then
+    qrencode -t ANSIUTF8 -m 1 "$url"
+  else
+    log "qrencode не найден — открой ссылку вручную"
+  fi
+}
+
+# ---------------------------------------------------------------------- server ---
+server_pid_alive() {
+  local pid cmd
+  [[ -f $PID_FILE ]] || return 1
+  pid=$(head -n1 "$PID_FILE" 2>/dev/null || true)
+  [[ ${pid:-} =~ ^[0-9]+$ ]] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  if [[ -r /proc/$pid/cmdline ]]; then
+    cmd=$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)
+    [[ $cmd == *dsh* && $cmd == *web* ]] || return 1
+  fi
+  printf '%s\n' "$pid"
+}
+
+server_url() {
+  local url
+  [[ -f $URL_FILE ]] || return 1
+  url=$(head -n1 "$URL_FILE" 2>/dev/null || true)
+  [[ $url == http* && $url == *token=* ]] || return 1
+  printf '%s\n' "$url"
+}
+
+port_listening() { (exec 3<>"/dev/tcp/$HOST/$PORT") 2>/dev/null; }
+
+wait_for_url() {
+  local deadline=$((SECONDS + WAIT_SECONDS)) line url
+  while ((SECONDS < deadline)); do
+    if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+      log "DSH server exited during startup; last log lines:"
+      tail -n 15 "$LOG_FILE" >&2 || true
+      return 1
+    fi
+    line=$(grep -m1 -oE 'dsh web: https?://[^[:space:]]+' "$LOG_FILE" 2>/dev/null || true)
+    if [[ -n $line ]]; then
+      url=${line#dsh web: }; url=${url%$'\r'}
+      [[ $url == *token=* ]] && { printf '%s\n' "$url"; return 0; }
+    fi
+    sleep 0.25
+  done
+  return 1
+}
+
+start_server() {
+  local extra=()
+  if port_listening; then
+    die "port $HOST:$PORT уже занят другим процессом — задай DSH_MOBILE_PORT"
+  fi
+  : >"$LOG_FILE"
+  log "starting DSH mobile server on $HOST:$PORT${PUBLIC_URL:+ (public $PUBLIC_URL)}"
+  ( nohup "$DSH_BIN" web --port "$PORT" --host "$HOST" --no-open \
+      ${PUBLIC_URL:+--public-url "$PUBLIC_URL"} \
+      ${TRUSTED_HOST:+--trusted-host "$TRUSTED_HOST"} \
+      >>"$LOG_FILE" 2>&1 & echo $! >"$PID_FILE" )
+  SERVER_PID=$(cat "$PID_FILE")
+  URL=$(wait_for_url) || { stop_server; die "DSH не напечатал token-URL за ${WAIT_SECONDS}s (лог: $LOG_FILE)"; }
+  printf '%s\n' "$URL" >"$URL_FILE"
+}
+
+stop_server() {
+  local pid
+  if pid=$(server_pid_alive); then
+    log "stopping DSH mobile server (pid $pid)"
+    kill "$pid" 2>/dev/null || true
+    for _ in $(seq 1 50); do kill -0 "$pid" 2>/dev/null || break; sleep 0.2; done
+    kill -9 "$pid" 2>/dev/null || true
+  fi
+  rm -f "$PID_FILE" "$URL_FILE"
+  if [[ -f $MODE_FILE && $(cat "$MODE_FILE") == https ]]; then
+    tailscale serve --https=443 off >/dev/null 2>&1 || true
+    rm -f "$MODE_FILE"
+  fi
+  stop_ssh_tunnel
+  if [[ -f $MODE_FILE && $(cat "$MODE_FILE") == pinggy ]]; then
+    stop_funnel_proxy
+    rm -f "$MODE_FILE"
+  fi
+  if [[ -f $MODE_FILE && $(cat "$MODE_FILE") == funnel ]]; then
+    stop_funnel_proxy
+    tailscale funnel reset >/dev/null 2>&1 || true
+    rm -f "$MODE_FILE"
+  fi
+}
+
+# ------------------------------------------------------------------------ modes ---
+print_pairing() {
+  local url=$1 mode
+  mode=$(cat "$MODE_FILE" 2>/dev/null || echo tailscale)
+  cat <<EOF
+
+  DeepSeek Harness на телефоне
+  ─────────────────────────────────────────────────────────────
+  Ссылка:  $url
+  Cookie действует 30 дней: QR нужен заново только после
+  перезапуска сервера.
+EOF
+  if [[ $mode == pinggy || $mode == funnel || $mode == ssh || $mode == vps ]]; then
+    cat <<EOF
+
+  1) Телефону VPN/Tailscale НЕ нужен — публичный HTTPS работает и с Happ.
+  2) Открой ссылку/QR (pinggy спросит «Enter site» один раз),
+     браузер спросит Basic-Auth (см. ниже), затем откроется DSH.
+  3) «Добавить на экран Домой» — получишь standalone-окно «DSH».
+EOF
+  else
+    cat <<EOF
+
+  1) Телефон должен быть в том же tailnet (приложение Tailscale).
+  2) Открой ссылку/QR → в меню браузера «Добавить на экран Домой»
+     (iOS Safari: Поделиться → На экран «Домой»; Android Chrome:
+     ⋮ → Добавить на главный экран).
+  3) Открывай иконку «DSH» — это standalone-окно без адресной строки.
+EOF
+  fi
+  cat <<EOF
+
+  Безопасность: ссылка содержит одноразовый launch-token; не пересылай её.
+  Отозвать доступ: удалить client-connection/browser-session в ~/.dsh/.credentials.yaml.
+
+EOF
+  qr "$url"
+}
+
+mode_start() {
+  local mode=${1:-tailscale} ip dns
+  prepare_runtime
+  if [[ $mode == lan ]]; then
+    ip=$(lan_ip); [[ -n $ip ]] || die "не удалось определить LAN IP"
+    HOST=$ip; PUBLIC_URL=''; TRUSTED_HOST=''; MODE=lan
+  elif [[ $mode == https ]]; then
+    command -v tailscale >/dev/null 2>&1 || die "tailscale не установлен"
+    dns=$(tailscale_dns); [[ -n $dns ]] || die "не удалось получить tailnet DNS-имя"
+    HOST=127.0.0.1
+    PUBLIC_URL="https://$dns/"
+    TRUSTED_HOST=$dns
+    MODE=https
+    tailscale serve --bg --https=443 "http://127.0.0.1:$PORT" 2>/tmp/dsh-mobile-serve.err || {
+      cat /tmp/dsh-mobile-serve.err >&2
+      die "tailscale serve недоступен. Разово: sudo tailscale set --operator=\$USER, затем повтори --https"
+    }
+  else
+    command -v tailscale >/dev/null 2>&1 || die "tailscale не установлен (или используй --lan)"
+    ip=$(tailscale_ip); [[ -n $ip ]] || die "Tailscale не запущен (получи IP: tailscale ip -4)"
+    HOST=$ip; PUBLIC_URL=''; TRUSTED_HOST=''; MODE=tailscale
+  fi
+  [[ -n ${DSH_MOBILE_HOST:-} ]] && HOST=$DSH_MOBILE_HOST
+  printf '%s\n' "$MODE" >"$MODE_FILE"
+  start_server
+  print_pairing "$URL"
+}
+
+mode_status() {
+  prepare_runtime 2>/dev/null || true
+  local pid url
+  printf 'port:       %s\n' "$PORT"
+  printf 'mode:       %s\n' "$(cat "$MODE_FILE" 2>/dev/null || echo tailscale)"
+  if pid=$(server_pid_alive) && url=$(server_url); then
+    printf 'server:     running (pid %s)\n' "$pid"
+    printf 'url:        %s\n' "$url"
+    printf 'tailscale:  %s\n' "$(tailscale_ip 2>/dev/null || echo '-')"
+    qr "$url"
+  else
+    printf 'server:     not running\n'
+  fi
+}
+
+# Basic-Auth credentials for the public funnel (generated once, chmod 600).
+ensure_funnel_auth() {
+  local pass
+  if [[ ! -s $FUNNEL_AUTH_FILE ]]; then
+    pass=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 20)
+    umask 077
+    printf 'dsh:%s\n' "$pass" >"$FUNNEL_AUTH_FILE"
+    chmod 600 "$FUNNEL_AUTH_FILE"
+  fi
+  FUNNEL_AUTH=$(head -n1 "$FUNNEL_AUTH_FILE")
+  FUNNEL_USER=${FUNNEL_AUTH%%:*}
+  FUNNEL_PASS=${FUNNEL_AUTH#*:}
+}
+
+print_funnel_auth() {
+  [[ -s $FUNNEL_AUTH_FILE ]] || die "нет сохранённых Basic-Auth данных (сначала dsh-mobile --funnel)"
+  printf 'Basic-Auth:  %s\n' "$(head -n1 "$FUNNEL_AUTH_FILE")"
+  printf 'файл:        %s (0600)\n' "$FUNNEL_AUTH_FILE"
+}
+
+# PID helpers for the local relay in front of funnel.
+funnel_proxy_alive() {
+  local pid
+  [[ -f $FUNNEL_PID_FILE ]] || return 1
+  pid=$(head -n1 "$FUNNEL_PID_FILE" 2>/dev/null || true)
+  [[ ${pid:-} =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || return 1
+  printf '%s\n' "$pid"
+}
+
+start_funnel_proxy() {
+  local dport=$1
+  if funnel_proxy_alive >/dev/null; then return 0; fi
+  : >"$STATE_DIR/funnel-proxy.log"
+  ensure_funnel_auth
+  ( nohup "$HOME/.local/bin/dsh-dual-listen" --listen 127.0.0.1 --port "$FUNNEL_PORT" \
+      --target "127.0.0.1:$dport" --rewrite-origin \
+      --basic-auth "$FUNNEL_USER:$FUNNEL_PASS" >>"$STATE_DIR/funnel-proxy.log" 2>&1 & \
+    echo $! >"$FUNNEL_PID_FILE" )
+  for _ in $(seq 1 40); do
+    (exec 3<>"/dev/tcp/127.0.0.1/$FUNNEL_PORT") 2>/dev/null && return 0
+    sleep 0.25
+  done
+  return 1
+}
+
+stop_funnel_proxy() {
+  local pid
+  if pid=$(funnel_proxy_alive); then kill "$pid" 2>/dev/null || true; fi
+  rm -f "$FUNNEL_PID_FILE" "$FUNNEL_URL_FILE"
+}
+
+ssh_tunnel_alive() {
+  local pid
+  [[ -f $SSH_PID_FILE ]] || return 1
+  pid=$(head -n1 "$SSH_PID_FILE" 2>/dev/null || true)
+  [[ ${pid:-} =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || return 1
+  printf '%s\n' "$pid"
+}
+
+stop_ssh_tunnel() {
+  local pid
+  if pid=$(ssh_tunnel_alive); then kill "$pid" 2>/dev/null || true; fi
+  rm -f "$SSH_PID_FILE" "$SSH_URL_FILE"
+}
+
+mode_vps() {
+  local conf durl token url code
+  prepare_runtime
+  conf=${DSH_MOBILE_VPS_CONF:-$HOME/.config/dsh-mobile/vps.conf}
+  [[ -f $conf ]] || die "нет $conf — VPS-режим не настроен"
+  # shellcheck disable=SC1090
+  . "$conf"
+  [[ -n ${VPS_HOST:-} && -n ${BASIC_USER:-} && -n ${BASIC_PASS:-} ]] || die "в $conf нужны VPS_HOST, BASIC_USER, BASIC_PASS"
+  durl=$(head -n1 "$HOME/.local/state/dsh-desktop/server.url" 2>/dev/null || true)
+  [[ -n $durl ]] || die "dsh-desktop не запущен (нет server.url)"
+  token=${durl#*token=}
+  url="https://$VPS_HOST/?token=$token"
+  code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "$url") || true
+  if [[ $code == 000 ]]; then
+    die "публичный URL $url недоступен (VPS/Traefik/ACME?)"
+  fi
+  printf 'vps\n' >"$MODE_FILE"
+  print_pairing "$url"
+  printf '\n  Basic-Auth:  %s:%s  (файл %s, 0600)\n' "$BASIC_USER" "$BASIC_PASS" "$conf"
+  cat <<'NOTE'
+
+  Это твой VPS (Traefik + Let's Encrypt + локальный Basic-Auth relay):
+  телефону не нужны Tailscale/Happ-конфликты — обычный HTTPS из любой сети.
+  Роут живёт на VPS (docker restart unless-stopped + ACME renew), `dsh-mobile --stop`
+  его НЕ выключает. Выключить: ssh dsh-vps 'docker stop dsh-relay'.
+NOTE
+}
+
+mode_ssh_tunnel() {
+  local durl dport token url
+  prepare_runtime
+  durl=$(head -n1 "$HOME/.local/state/dsh-desktop/server.url" 2>/dev/null || true)
+  [[ -n $durl ]] || die "dsh-desktop не запущен — сначала подними desktop-сервер"
+  dport=${durl#*://*:}; dport=${dport%%/*}; dport=${dport%%\?*}
+  token=${durl#*token=}
+  ensure_funnel_auth
+  start_funnel_proxy "$dport" || die "не удалось поднять локальный relay на 127.0.0.1:$FUNNEL_PORT"
+  stop_ssh_tunnel
+  : >"$SSH_LOG"
+  # pinggy: plain SSH on 443, free tier gives a public HTTPS URL for 60 minutes.
+  setsid ssh -p 443 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+      -o ServerAliveInterval=20 -o ExitOnForwardFailure=yes -R0:"127.0.0.1:$FUNNEL_PORT" a.pinggy.io \
+      >>"$SSH_LOG" 2>&1 < /dev/null &
+  echo $! >"$SSH_PID_FILE"
+  for _ in $(seq 1 100); do
+    url=$(grep -aoE "https://[a-z0-9-]+\.run\.pinggy-free\.link|https://[a-z0-9-]+\.free\.pinggy\.net" "$SSH_LOG" 2>/dev/null | head -n1)
+    [[ -n $url ]] && break
+    sleep 0.5
+  done
+  if [[ -z ${url:-} ]]; then
+    stop_ssh_tunnel
+    die "pinggy не выдал URL (лог: $SSH_LOG)"
+  fi
+  url="$url/?token=$token"
+  printf '%s\n' "$url" >"$SSH_URL_FILE"
+  printf 'pinggy\n' >"$MODE_FILE"
+  print_pairing "$url"
+  printf '\n  Basic-Auth:  %s:%s  (файл %s, 0600)\n' "$FUNNEL_USER" "$FUNNEL_PASS" "$FUNNEL_AUTH_FILE"
+  cat <<'NOTE'
+
+  Публичный HTTPS через pinggy.io: телефону не нужен Tailscale — работает вместе с Happ.
+  1) При первом открытии pinggy покажет страницу "Caution …" → нажми "Enter site" один раз.
+  2) Браузер спросит Basic-Auth (логин/пароль выше), затем DSH попросит token-ссылку.
+  3) Бесплатный туннель живёт 60 минут и домен может меняться — после истечения
+     запусти `dsh-mobile --pinggy` заново. Выключить: dsh-mobile --stop.
+  TLS терминируется на стороне pinggy (третья сторона видит трафик), защита —
+  Basic-Auth + launch-token/cookie DSH.
+NOTE
+}
+
+mode_funnel() {
+  local durl dport token dns url out
+  prepare_runtime
+  command -v tailscale >/dev/null 2>&1 || die "tailscale не установлен"
+  durl=$(head -n1 "$HOME/.local/state/dsh-desktop/server.url" 2>/dev/null || true)
+  [[ -n $durl ]] || die "dsh-desktop не запущен — сначала подними desktop-сервер (или используй обычный dsh-mobile)"
+  dport=${durl#*://*:}; dport=${dport%%/*}; dport=${dport%%\?*}
+  token=${durl#*token=}
+  dns=$(tailscale_dns); [[ -n $dns ]] || die "не удалось получить tailnet DNS-имя"
+  ensure_funnel_auth
+  start_funnel_proxy "$dport" || die "не удалось поднять локальный relay на 127.0.0.1:$FUNNEL_PORT"
+  # Funnel слушает только 443/8443/10000; 443 — самый удобный.
+  out=$(tailscale funnel --bg --https=443 "http://127.0.0.1:$FUNNEL_PORT" 2>&1) || {
+    printf '%s\n' "$out" >&2
+    stop_funnel_proxy
+    die "tailscale funnel недоступен. Разово: sudo tailscale set --operator=\$USER
+и включи Funnel для устройства в админке tailnet (Access controls → nodeAttrs: funnel).
+После этого повтори: dsh-mobile --funnel"
+  }
+  url="https://$dns/?token=$token"
+  printf '%s\n' "$url" >"$FUNNEL_URL_FILE"
+  printf 'funnel\n' >"$MODE_FILE"
+  print_pairing "$url"
+  printf '\n  Basic-Auth:  %s:%s  (сохранится в %s, 0600)\n' "$FUNNEL_USER" "$FUNNEL_PASS" "$FUNNEL_AUTH_FILE"
+  cat <<'NOTE'
+
+  Это ПУБЛИЧНЫЙ HTTPS-адрес (Tailscale Funnel): телефону Tailscale не нужен,
+  поэтому он спокойно работает вместе с Happ/любым VPN. Двойная защита:
+  Basic-Auth (браузер спросит один раз) + launch-token/cookie DSH.
+  Выключить публичный доступ: dsh-mobile --stop.
+NOTE
+}
+
+mode_doctor() {
+  prepare_runtime 2>/dev/null || true
+  local durl dport token code tsip furl
+  durl=$(head -n1 "$HOME/.local/state/dsh-desktop/server.url" 2>/dev/null || true)
+  [[ -n $durl ]] || die "dsh-desktop не запущен (нет server.url)"
+  dport=${durl#*://*:}; dport=${dport%%/*}; dport=${dport%%\?*}
+  token=${durl#*token=}
+  tsip=$(tailscale_ip 2>/dev/null || true)
+  printf 'desktop server: %s\n' "$durl"
+  code=$(curl -s -o /dev/null -w '%{http_code}' -m 8 "http://127.0.0.1:$dport/?token=$token")
+  printf 'loopback token exchange: %s (ожидается 303)\n' "$code"
+  if [[ -n $tsip ]]; then
+    code=$(curl -s -o /dev/null -w '%{http_code}' -m 8 "http://$tsip:$dport/?token=$token")
+    printf 'tailnet token exchange:  %s (ожидается 303)\n' "$code"
+    local vconf=${DSH_MOBILE_VPS_CONF:-$HOME/.config/dsh-mobile/vps.conf}
+    if [[ -f $vconf ]]; then
+      # shellcheck disable=SC1090
+      . "$vconf"
+      code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 -u "$BASIC_USER:$BASIC_PASS" "https://$VPS_HOST/?token=$token")
+      printf 'vps token exchange:      %s (ожидается 303)\n' "$code"
+    fi
+    local purl
+    purl=$(head -n1 "$SSH_URL_FILE" 2>/dev/null || true)
+    if [[ -n $purl ]]; then
+      ensure_funnel_auth
+      code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 -u "$FUNNEL_USER:$FUNNEL_PASS" "$purl")
+      printf 'pinggy token exchange:   %s (ожидается 303)\n' "$code"
+    fi
+    furl=$(head -n1 "$FUNNEL_URL_FILE" 2>/dev/null || true)
+    if [[ -n $furl ]]; then
+      ensure_funnel_auth
+      code=$(curl -s -o /dev/null -w '%{http_code}' -m 15 -u "$FUNNEL_USER:$FUNNEL_PASS" "$furl")
+      printf 'funnel token exchange:   %s (ожидается 303, Basic-Auth учтён)\n' "$code"
+      code=$(curl -s -o /dev/null -w '%{http_code}' -m 15 "$furl")
+      printf 'funnel без Basic-Auth:   %s (ожидается 401)\n' "$code"
+    fi
+  fi
+  cat <<'HINT'
+
+  Если на телефоне "authentication required" (401):
+   1) перегенерируй QR прямо сейчас: dsh-mobile --share (или --funnel) —
+      токен мог смениться при перезапуске desktop-сервера;
+   2) открывай ссылку в настоящем Safari/Chrome, НЕ во встроенном браузере
+      мессенджера; после успешного входа добавляй на экран Домой;
+   3) если cookie потерялась/протухла — открой token-ссылку заново (иконка
+      PWA сама по себе cookie не восстанавливает);
+   4) отозвать все сессии: удалить запись client-connection/browser-session
+      из ~/.dsh/.credentials.yaml, затем заново QR.
+HINT
+}
+
+mode_share() {
+  local durl dhost dport token tsip newurl
+  durl=$(head -n1 "$HOME/.local/state/dsh-desktop/server.url" 2>/dev/null || true)
+  [[ -n $durl ]] || die "dsh-desktop не запущен (нет server.url)"
+  dhost=${durl#*://}; dhost=${dhost%%/*}; dhost=${dhost%%:*}
+  dport=${durl#*://*:}; dport=${dport%%/*}; dport=${dport%%\?*}
+  token=${durl#*token=}
+  tsip=$(tailscale_ip 2>/dev/null || true)
+  case $dhost in
+    127.0.0.1|localhost)
+      [[ -n $tsip ]] || die "Tailscale не запущен — не могу получить адрес для телефона"
+      newurl="http://$tsip:$dport/?token=$token"
+      # The second listener forwards to 127.0.0.1:$dport and rewrites Host.
+      if ! (exec 3<>"/dev/tcp/$tsip/$dport") 2>/dev/null; then
+        die "на $tsip:$dport никто не слушает. Включи dual-listener:
+  systemctl --user enable --now dsh-dual-listen
+(или запусти 'dsh-dual-listen --listen $tsip --port $dport --target 127.0.0.1:$dport')"
+      fi
+      ;;
+    *) newurl=$durl ;;
+  esac
+  print_pairing "$newurl"
+}
+
+# ------------------------------------------------------------------------ main ---
+ACTION=start
+MODE=tailscale
+while (($#)); do
+  case $1 in
+    --lan) MODE=lan ;;
+    --https) MODE=https ;;
+    --port) shift; PORT=${1:?} ;;
+    --status) ACTION=status ;;
+    --qr) ACTION=qr ;;
+    --share) ACTION=share ;;
+    --funnel) ACTION=funnel ;;
+    --funnel-creds) ACTION=funnel_creds ;;
+    --ssh-tunnel|--pinggy) ACTION=ssh_tunnel ;;
+    --vps) ACTION=vps ;;
+    --doctor) ACTION=doctor ;;
+    --stop) ACTION=stop ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "unknown option: $1 (см. --help)" ;;
+  esac
+  shift
+done
+
+case $ACTION in
+  start) mode_start "$MODE" ;;
+  status) mode_status ;;
+  qr)
+    if url=$(server_url) 2>/dev/null; then :
+    elif url=$(head -n1 "$SSH_URL_FILE" 2>/dev/null) && [[ -n $url ]]; then :
+    elif url=$(head -n1 "$FUNNEL_URL_FILE" 2>/dev/null) && [[ -n $url ]]; then :
+    else die "нет сохранённого URL; запусти dsh-mobile (--share/--pinggy/--funnel)"; fi
+    qr "$url" ;;
+  share) mode_share ;;
+  funnel) mode_funnel ;;
+  ssh_tunnel) mode_ssh_tunnel ;;
+  vps) mode_vps ;;
+  funnel_creds) print_funnel_auth ;;
+  doctor) mode_doctor ;;
+  stop) stop_server; log "stopped (managed mobile-сервер/funnel; desktop-сервер не тронут)" ;;
+esac

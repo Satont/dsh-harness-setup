@@ -1,0 +1,3 @@
+- insert:
+    - id: limits-strip
+      name: dsh-limits-strip

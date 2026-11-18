@@ -1,0 +1,8 @@
+# dsh-worktree-lifecycle bundle layer: inserts the worktree-lifecycle plugin row.
+# The row id stays stable so profile patches and reinstalls can target it:
+#   - id: worktree-lifecycle
+#     name: dsh-worktree-lifecycle
+#     config: { ... }
+- insert:
+    - id: worktree-lifecycle
+      name: dsh-worktree-lifecycle

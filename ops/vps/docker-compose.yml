@@ -1,0 +1,43 @@
+# VPS relay: terminate TLS in Traefik, proxy to the home DSH over Tailscale.
+# Copy this directory to the VPS (e.g. /opt/dsh-relay), create .env with the
+# four values below, then: docker compose up -d
+#
+# .env (mode 0600, NEVER committed):
+#   TAILSCALE_IP=100.x.y.z
+#   PUBLIC_HOST=YOUR_PUBLIC_HOST
+#   BASIC_USER=dsh
+#   BASIC_PASS=<long random password>
+services:
+  dsh-relay:
+    image: node:22-alpine
+    container_name: dsh-relay
+    restart: unless-stopped
+    working_dir: /app
+    command:
+      - node
+      - /app/dsh-dual-listen
+      - --listen
+      - 0.0.0.0
+      - --port
+      - "3100"
+      - --target
+      - ${TAILSCALE_IP}:3099
+      - --rewrite-host
+      - 127.0.0.1:3099
+      - --rewrite-origin
+      - --basic-auth
+      - ${BASIC_USER}:${BASIC_PASS}
+    volumes:
+      - ./dsh-dual-listen:/app/dsh-dual-listen:ro
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.dsh.entrypoints: websecure
+      traefik.http.routers.dsh.rule: Host(`${PUBLIC_HOST}`)
+      traefik.http.routers.dsh.tls.certresolver: le
+      traefik.http.services.dsh.loadbalancer.server.port: "3100"
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true

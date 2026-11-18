@@ -1,0 +1,144 @@
+#!/usr/bin/env node
+/**
+ * dsh-dual-listen — second listener for one DSH server.
+ *
+ * DSH's `dsh web --host` accepts exactly one concrete local address and rejects
+ * wildcards, so a single process cannot bind both 127.0.0.1 and the Tailscale
+ * IP. This tiny HTTP/WebSocket proxy solves that: it listens on the second
+ * address and forwards to the real (loopback) server, rewriting Host/Origin to
+ * the target authority. The browser on the phone therefore talks to
+ * http://<tailscale-ip>:<port> while the DSH Host sees its canonical
+ * 127.0.0.1:<port> authority — the launch-token exchange, the signed cookie and
+ * the /api same-origin fence all keep working unchanged.
+ *
+ * Zero dependencies (node:http + node:net).
+ *
+ * Usage: dsh-dual-listen [--listen auto|<ip>] [--port 3099] [--target 127.0.0.1:3099]
+ *        [--rewrite-origin]   (also rewrite Origin/Referer for a public tunnel host)
+ *        [--basic-auth user:pass]  (require HTTP Basic in front of the target)
+ *        [--rewrite-host host:port] (present this authority to the target, e.g. when
+ *                                   proxying to a host the DSH listener does not bind)
+ */
+import http from "node:http";
+import net from "node:net";
+import { execFileSync } from "node:child_process";
+import { timingSafeEqual } from "node:crypto";
+
+const argv = process.argv.slice(2);
+function opt(name, fallback) {
+  const i = argv.indexOf(name);
+  return i >= 0 && argv[i + 1] ? argv[i + 1] : fallback;
+}
+
+const port = Number(opt("--port", "3099"));
+const alwaysRewriteOrigin = argv.includes("--rewrite-origin");
+const basicAuth = opt("--basic-auth", "");
+const rewriteHost = opt("--rewrite-host", "");
+const expectedAuth = basicAuth ? "Basic " + Buffer.from(basicAuth, "utf8").toString("base64") : null;
+
+function authorized(headers) {
+  if (!expectedAuth) return true;
+  const got = headers.authorization ?? "";
+  const a = Buffer.from(got);
+  const b = Buffer.from(expectedAuth);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function rejectUnauthorized(res) {
+  res.writeHead(401, {
+    "content-type": "text/plain; charset=utf-8",
+    "www-authenticate": 'Basic realm="DSH", charset="UTF-8"',
+    "cache-control": "no-store",
+  });
+  res.end("DSH: authentication required (Basic)\n");
+}
+let listenHost = opt("--listen", "auto");
+const target = opt("--target", `127.0.0.1:${port}`);
+const [targetHost, targetPortRaw] = target.split(":");
+const targetPort = Number(targetPortRaw || port);
+const targetAuthority = `${targetHost}:${targetPort}`;
+
+if (listenHost === "auto") {
+  try {
+    listenHost = execFileSync("tailscale", ["ip", "-4"], { encoding: "utf8" }).split("\n")[0].trim();
+  } catch {
+    console.error("dsh-dual-listen: tailscale not available; pass --listen <ip>");
+    process.exit(1);
+  }
+}
+if (!listenHost) {
+  console.error("dsh-dual-listen: could not determine the listen address");
+  process.exit(1);
+}
+
+const listenAuthority = `${listenHost}:${port}`;
+const listenOrigins = new Set([`http://${listenAuthority}`, `https://${listenAuthority}`]);
+const targetOrigin = `http://${rewriteHost || targetAuthority}`;
+
+/** Rewrite the headers that encode the request authority, leave everything else alone. */
+function rewriteHeaders(headers) {
+  const out = { ...headers };
+  if (out.host) out.host = rewriteHost || targetAuthority;
+  if (out.origin && (alwaysRewriteOrigin || listenOrigins.has(out.origin))) out.origin = targetOrigin;
+  if (out.referer) {
+    try {
+      const url = new URL(out.referer);
+      if (alwaysRewriteOrigin || listenOrigins.has(url.origin)) out.referer = targetOrigin + url.pathname + url.search + url.hash;
+    } catch {}
+  }
+  return out;
+}
+
+const server = http.createServer((req, res) => {
+  if (!authorized(req.headers)) return rejectUnauthorized(res);
+  const upstream = http.request(
+    { host: targetHost, port: targetPort, method: req.method, path: req.url, headers: rewriteHeaders(req.headers) },
+    (up) => {
+      res.writeHead(up.statusCode ?? 502, up.headers);
+      up.pipe(res);
+    },
+  );
+  upstream.on("error", (error) => {
+    if (!res.headersSent) res.writeHead(502, { "content-type": "text/plain; charset=utf-8" });
+    res.end(`dsh-dual-listen: upstream error: ${error.message}\n`);
+  });
+  req.pipe(upstream);
+});
+
+// WebSocket (the client's live remote.mux) and other Upgrade requests.
+server.on("upgrade", (req, socket, head) => {
+  if (!authorized(req.headers)) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="DSH", charset="UTF-8"\r\nContent-Length: 0\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+  const headers = rewriteHeaders(req.headers);
+  const lines = [`${req.method} ${req.url} HTTP/1.1`];
+  for (const [name, value] of Object.entries(headers)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) for (const item of value) lines.push(`${name}: ${item}`);
+    else lines.push(`${name}: ${value}`);
+  }
+  const upstream = net.connect(targetPort, targetHost, () => {
+    upstream.write(lines.join("\r\n") + "\r\n\r\n");
+    if (head && head.length) upstream.write(head);
+    socket.pipe(upstream).pipe(socket);
+  });
+  upstream.on("error", () => socket.destroy());
+  socket.on("error", () => upstream.destroy());
+});
+
+server.on("clientError", (_error, socket) => {
+  try { socket.end("HTTP/1.1 400 Bad Request\r\n\r\n"); } catch {}
+});
+
+server.listen(port, listenHost, () => {
+  console.log(`dsh-dual-listen: listening on http://${listenAuthority} -> ${targetOrigin}`);
+});
+
+function shutdown() {
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 1500).unref();
+}
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

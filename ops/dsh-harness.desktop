@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=DeepSeek Harness
+GenericName=AI Coding Agent
+Comment=Run DeepSeek Harness in a dedicated app window
+Comment[ru]=DeepSeek Harness в отдельном окне приложения
+Exec=/home/YOUR_USER/.local/bin/dsh-desktop
+TryExec=/home/YOUR_USER/.local/bin/dsh-desktop
+Icon=dsh-harness
+Terminal=false
+StartupNotify=false
+StartupWMClass=DshHarness
+Categories=Development;Utility;
+Keywords=dsh;deepseek;harness;ai;agent;coding;

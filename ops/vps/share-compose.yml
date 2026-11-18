@@ -1,0 +1,24 @@
+# Static artifact host (nginx). Directory layout:
+#   share-compose.yml
+#   share-nginx.conf
+#   site/                 <-- published .html snapshots, one random filename each
+services:
+  dsh-share:
+    image: nginx:alpine
+    container_name: dsh-share
+    restart: unless-stopped
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+      - ./share-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.dsh-share.entrypoints: websecure
+      traefik.http.routers.dsh-share.rule: Host(`${SHARE_HOST}`)
+      traefik.http.routers.dsh-share.tls.certresolver: le
+      traefik.http.services.dsh-share.loadbalancer.server.port: "80"
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true

@@ -1,0 +1,67 @@
+{
+  "name": "dsh-worktree-lifecycle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH host plugin: cascade-removes DSH-created Git worktrees and their dsh-* branches when a Session is deleted, and runs a per-project create hook once when a Session starts inside such a worktree.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./engine": {
+      "default": "./lib/engine.js"
+    },
+    "./package.json": "./package.json",
+    "./client": {
+      "default": "./lib/client.js"
+    }
+  },
+  "files": [
+    "lib/",
+    "src/",
+    "test/",
+    "scripts/",
+    "cordis.patch.yml",
+    "README.md",
+    "lib/client.js"
+  ],
+  "engines": {
+    "node": ">=20",
+    "dsh": "^0.2.2-rc.1"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "worktree",
+    "git"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/",
+    "smoke": "node test/smoke.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/schemastery": "^3.18.4"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  }
+}
