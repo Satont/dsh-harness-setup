@@ -19,6 +19,7 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 - Extra UI: `dsh-better-sidebar@0.32.0`, `dsh-context@0.85.1`,
   `dsh-plugin@2.3.9` (Plugin Hub), `@local/dsh-usage-limits` (Limits panel),
   `dsh-limits-strip` (local sidebar card), `dsh-whale-maid-mascot` English fork
+- Voice: `dsh-voice-hex` with local Hex **Whisper large-v3-turbo**, default language `ru`
 - Extras: `impeccable` skill installed globally under `~/.dsh/skills/impeccable`
 
 ## What is in the repository
@@ -42,9 +43,11 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 |---|---|
 | ![Limits panel](docs/screenshots/limits-panel.jpg) | ![Limits card](docs/screenshots/limits-sidebar.jpg) |
 
-| Whale-chan | Phone |
+| Whale-chan | Voice Input (Hex) |
 |---|---|
-| ![Whale-chan](docs/screenshots/whale-chan.jpg) | ![Mobile](docs/screenshots/mobile.jpg) |
+| ![Whale-chan](docs/screenshots/whale-chan.jpg) | ![Voice Input](docs/screenshots/voice-hex.jpg) |
+
+![Mobile](docs/screenshots/mobile.jpg)
 
 Screenshots are sanitized: balances and account identifiers are hidden, and the sidebar is
 cropped where session names would appear. See `docs/screenshots/README.md`.

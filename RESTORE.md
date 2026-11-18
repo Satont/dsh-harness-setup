@@ -108,6 +108,25 @@ glab keyring, not in this repo.
 - Project MCP servers live in `<project>/.dsh/mcp.json`; they are per-project data and
   intentionally not included here.
 
+## 4.1 Voice input (Hex)
+
+The voice button uses the local Hex app instead of cloud speech:
+
+```bash
+# once per machine
+hex labs on transcribe-files
+hex model list --json                 # confirm whisper_large_v3_turbo is installed
+hex transcribe --json --model whisper_large_v3_turbo --language ru /tmp/test.wav
+```
+
+The profile has `defaultProvider: hex-whisper-large-v3-turbo` and `language: ru`.
+Open **Plugins -> Voice Input -> Speech recognition** to pick another Hex model
+(Parakeet v3, Qwen3-ASR, GigaAM, SenseVoice, ...). Installing an uninstalled model is
+offered in the same dialog and runs `hex model install`; that temporarily switches Hex's
+global model, so the plugin restores the previous selection afterwards.
+
+No audio leaves the machine: browser -> DSH speech service -> host plugin -> `hex transcribe`.
+
 ## 5. Skills
 
 Global skills are not part of this repo. To recreate the design skill:

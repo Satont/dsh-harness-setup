@@ -12,6 +12,7 @@ none of the values that grant access to accounts or machines.
 | LLM API keys/grants | `~/.dsh/.credentials.yaml` | provider login / API key UI |
 | GitLab token | glab's keyring (`glab auth login`) | `glab auth login --hostname <host>` |
 | GitHub token | gh's keyring (`gh auth login`) | `gh auth login` |
+| Hex local transcription | no secret; local CLI/socket | `hex labs on transcribe-files` and install models |
 | Context7 API key | `~/.config/opencode/secrets/context7-key` (0600) | paste your key / change MCP row |
 | VPS SSH access | `~/.ssh/config` + keys | your normal SSH setup |
 | VPS relay Basic-Auth | `/opt/dsh-relay/.env` (0600) | `openssl rand -base64 24`, update both sides |

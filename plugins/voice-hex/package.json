@@ -1,0 +1,11 @@
+{
+  "name": "dsh-voice-hex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH speech-to-text providers backed by the local Hex dictation app (Whisper, Parakeet, Qwen3-ASR, ...).",
+  "main": "src/index.js",
+  "exports": { ".": { "default": "./src/index.js" }, "./package.json": "./package.json" },
+  "files": ["src/", "cordis.patch.yml", "README.md"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

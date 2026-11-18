@@ -12,6 +12,7 @@ unless noted. Local plugins are copied into the profile `plugins/` directory.
 | `dsh-worktree-lifecycle` | `plugins/worktree-lifecycle` | Cascade-delete DSH worktree + `dsh-*` branch on session delete; per-project create hook (UI tab) |
 | `dsh-limits-strip` | `plugins/limits-strip` | Limits card in the left sidebar footer; click opens full Limits |
 | `dsh-whale-maid-mascot` | `plugins/whale-maid-en` | Whale-chan (English-localized fork; original is MIT, see `LICENSE`/`NOTICE`) |
+| `dsh-voice-hex` | `plugins/voice-hex` | Local speech-to-text via Hex: Whisper large-v3-turbo, Parakeet, Qwen3-ASR, GigaAM, ...; DSH provider picker |
 
 ## Third-party bundles
 
@@ -44,7 +45,8 @@ pnpm add @kyf-eng/dsh-threads@0.2.0 dsh-project-mcp@0.4.3
 pnpm add @dungsil/dsh-plugin-forge-gitlab@0.1.1
 pnpm add github:bondiano/dsh-usage-limits
 pnpm add file:plugins/dsh-claude-ui file:plugins/inline-bash \
-  file:plugins/worktree-lifecycle file:plugins/limits-strip file:plugins/whale-maid-en
+  file:plugins/worktree-lifecycle file:plugins/limits-strip file:plugins/whale-maid-en \
+  file:plugins/voice-hex
 ```
 
 Add each package name to `dsh.profile.bundles` (the restore profile already does). The

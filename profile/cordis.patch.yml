@@ -333,3 +333,9 @@
 - id: llm-subscriptions
   config:
     codexClientVersion: "0.167.2"
+
+# ── Voice input: local Hex models (Whisper large-v3-turbo etc.) ──────────────
+- id: speech-to-text
+  config:
+    defaultProvider: hex-whisper-large-v3-turbo
+    language: ru

@@ -58,6 +58,23 @@ URL.
 - The hook is fire-and-forget; the first agent tool call may start before setup finishes.
   Keep long installs out of the critical path or use a lock/wait in the hook.
 
+## Voice input via Hex
+
+The microphone button uses the local Hex app (`hex transcribe`) through the `dsh-voice-hex`
+provider plugin. On a new machine:
+
+```bash
+hex labs on transcribe-files
+hex model list --json                 # whisper_large_v3_turbo must be installed
+hex transcribe --json --model whisper_large_v3_turbo --language ru /tmp/test.wav
+```
+
+Then open **Plugins -> Voice Input -> Speech recognition** and pick a provider (Whisper
+large-v3-turbo, Parakeet v3, Qwen3-ASR, SenseVoice, GigaAM, ...). The profile defaults to
+`hex-whisper-large-v3-turbo` + language `ru`. Uninstalled models offer **Download and
+prepare**; the plugin runs `hex model install` and restores Hex's previous global model.
+Audio stays on the host; only the final text enters the draft.
+
 ## Model and context tuning
 
 `tools/model-tuning/sync-standard-preset.mjs` regenerates the `preset-standard` block in
