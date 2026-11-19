@@ -84,3 +84,16 @@ approval flow when the agent tries to open them.
 ## License
 
 MIT
+
+## Local fork changes (DSH harness setup)
+
+This copy is vendored by `Satont/dsh-harness-setup` and adds:
+
+- the live panel defaults to the **right sidebar**, with a one-time localStorage migration
+  from the old chip/float mode;
+- the default `browser_*` session is keyed by the DSH conversation id
+  (`exec.agent.session.id`), so each chat has its own page/tab context;
+- the panel follows the active `uiSession` and hides for a chat without a live browser;
+- the model prompt tells models to omit the optional `session` argument unless asked.
+
+Keep these changes when upgrading the upstream package.
