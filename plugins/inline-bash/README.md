@@ -70,8 +70,9 @@ so a page reload picks the new `client.js`).
 | `→ В чат` on the card | Sends the command result (bounded display text) as one model message to the current chat; the button changes to `Отправлено` |
 | Any ordinary draft | Completely untouched — Enter is never intercepted |
 
-The card is content-sized and capped at **680 px**, so short commands no longer
-stretch across the whole composer. The `→ В чат` button posts the displayed
+The card is content-sized and aligned with the main conversation column (its width is
+bounded by `--dsh-chat-content-width`, up to 920 px), so it no longer sticks to the far left
+or stretches across the whole composer. The `→ В чат` button posts the displayed
 result (plus a truncation note when applicable) through
 `conversation.sendSession(...)`, which starts a normal model turn in the same
 Session; the command itself still never enters model context automatically.
