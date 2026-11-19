@@ -497,6 +497,7 @@ function BrowserPanel(props) {
     const apply2 = () => {
       restore();
       if (mode !== "sidebar" || !frame || !overlay) return;
+      if (scoped && (currentSessionId === null || names.length === 0)) return;
       const width = Math.min(Math.max(sidebarWidth, 280), Math.max(280, window.innerWidth - 60));
       const coverLeft = frame.getBoundingClientRect().right - width;
       const next = [];
@@ -527,7 +528,7 @@ function BrowserPanel(props) {
       window.removeEventListener("resize", apply2);
       restore();
     };
-  }, [mode, sidebarWidth]);
+  }, [mode, sidebarWidth, scoped, currentSessionId, names.length]);
   if (scoped && (currentSessionId === null || names.length === 0)) return null;
   const effWidth = Math.min(Math.max(sidebarWidth, 280), Math.max(280, window.innerWidth - 60));
   const containerBase = {
