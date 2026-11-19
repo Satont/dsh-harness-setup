@@ -52,6 +52,9 @@ window.__ModuleLoader__.load({
 		.ibx-send{flex:none;display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border:1px solid var(--claude-clay,rgba(217,119,87,.55));border-radius:5px;background:rgba(217,119,87,.10);color:var(--claude-clay,#d97757);font:inherit;font-size:10px;line-height:1.5;cursor:pointer;white-space:nowrap}
 		.ibx-send:hover{background:rgba(217,119,87,.22)}
 		.ibx-send:disabled{opacity:.55;cursor:default}
+		.ibx-copy{flex:none;display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border:1px solid var(--dsw-alias-border-l3,rgba(255,255,255,.16));border-radius:5px;background:transparent;color:var(--dsw-alias-label-secondary,#d6d2c7);font:inherit;font-size:10px;line-height:1.5;cursor:pointer;white-space:nowrap}
+		.ibx-copy:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.08))}
+		.ibx-copy.copied{color:var(--dsw-alias-state-success-primary,#4caf7d);border-color:var(--dsw-alias-state-success-primary,#4caf7d)}
 		.ibx-close{flex:none;display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:none;border-radius:5px;background:transparent;color:var(--dsw-alias-label-tertiary,#a9a49a);font-size:14px;line-height:1;cursor:pointer}
 		.ibx-close:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.08));color:var(--dsw-alias-label-primary,#f5f4ef)}
 		.ibx-out{margin:0;padding:8px 10px;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary,#d6d2c7)}
@@ -125,7 +128,31 @@ window.__ModuleLoader__.load({
 		function ResultCard({ result, onClose, onSend }) {
 		  const bounded = boundOutput(result.text);
 		  const [sendState, setSendState] = React.useState('idle');
+		  const [copyState, setCopyState] = React.useState('idle');
 		  const canSend = (result.kind === 'ok' || result.kind === 'fail') && typeof onSend === 'function';
+		  const copy = React.useCallback(async () => {
+		    const text = String(result.text == null ? '' : result.text);
+		    try {
+		      if (navigator.clipboard !== undefined && typeof navigator.clipboard.writeText === 'function') {
+		        await navigator.clipboard.writeText(text);
+		      } else {
+		        const area = document.createElement('textarea');
+		        area.value = text;
+		        area.style.position = 'fixed';
+		        area.style.opacity = '0';
+		        document.body.appendChild(area);
+		        area.select();
+		        document.execCommand('copy');
+		        area.remove();
+		      }
+		      setCopyState('copied');
+		      window.setTimeout(() => setCopyState('idle'), 1200);
+		    } catch {
+		      setCopyState('error');
+		      window.setTimeout(() => setCopyState('idle'), 1600);
+		    }
+		  }, [result.text]);
+		  const copyLabel = copyState === 'copied' ? 'Скопировано' : copyState === 'error' ? 'Ошибка' : 'Копировать';
 		  const send = React.useCallback(async () => {
 		    if (!canSend || sendState === 'sending' || sendState === 'sent') return;
 		    setSendState('sending');
@@ -145,6 +172,13 @@ window.__ModuleLoader__.load({
 		      h('span', { className: 'ibx-badge' }, 'BASH'),
 		      h('code', { className: 'ibx-cmd', title: result.cmd }, oneLine(result.cmd) || '(empty)'),
 		      h('span', { className: 'ibx-exit ' + (result.kind === 'fail' ? 'fail' : result.kind === 'ok' ? 'ok' : 'hint') }, badge),
+		      h('button', {
+		        type: 'button',
+		        className: 'ibx-copy' + (copyState === 'copied' ? ' copied' : ''),
+		        title: copyState === 'error' ? 'Не удалось скопировать' : 'Скопировать вывод команды',
+		        'aria-label': 'Copy inline bash output',
+		        onClick: () => { void copy(); },
+		      }, copyLabel),
 		      canSend ? h('button', {
 		        type: 'button',
 		        className: 'ibx-send',
