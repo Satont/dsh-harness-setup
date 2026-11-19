@@ -10,9 +10,11 @@
 - `pnpm-workspace.yaml` — hoisted node_modules, `autoInstallPeers: false`, as used by the
   live profile. It also allows the `agent-browser` install script, needed by the browser
   plugin.
-- `dsh-agent-browser` — model-facing `browser_*` tools plus a live viewport panel inside
-  the DSH GUI. After restoring, run `agent-browser install` once to fetch Chrome for
-  Testing; the system Chromium may be unusable while the managed build is self-contained.
+- `dsh-agent-browser` — local fork of 0.2.7 in `plugins/agent-browser`: model-facing
+  `browser_*` tools plus a live viewport docked in the right sidebar. The fork scopes the
+  default browser session to the DSH conversation and hides the panel outside that chat.
+  After restoring, run `agent-browser install` once to fetch Chrome for Testing; the
+  system Chromium may be unusable while the managed build is self-contained.
 
 Do not add credentials here. `~/.dsh/.credentials.yaml` and the subscriptions auth store
 are intentionally outside this repository.

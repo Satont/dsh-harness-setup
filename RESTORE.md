@@ -141,10 +141,11 @@ agent-browser --help              # sanity check
 # after starting DSH, ask any model to browse; the panel appears automatically
 ```
 
-The panel is a small chip at first. Click it, then the **▤** button to dock it as the right
-sidebar; the mode is stored in browser localStorage. **🖱** toggles human takeover, so you can
-click/scroll in the live page yourself. The managed Chrome lives in
-`~/.agent-browser/browsers/`, independent of the distro Chromium.
+The panel opens directly in the **right sidebar** for the current chat; switching to a chat
+with no browser hides it, while its page/tabs stay attached to that chat. **🖱** toggles human
+takeover, so you can click/scroll in the live page yourself. The managed Chrome lives in
+`~/.agent-browser/browsers/`, independent of the distro Chromium. The local fork under
+`plugins/agent-browser` carries the per-chat scope and docked-by-default behavior.
 
 If `browser_open` fails with `Chrome exited early`, run `agent-browser install` (do not
 point it at a broken `/usr/bin/chromium`). The profile sets `allowTakeover: true`; the tool

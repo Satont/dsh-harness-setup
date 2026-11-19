@@ -21,8 +21,9 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
   `dsh-plugin@2.3.9` (Plugin Hub), `@local/dsh-usage-limits` (Limits panel),
   `dsh-limits-strip` (local sidebar card), `dsh-whale-maid-mascot` English fork
 - Voice: `dsh-voice-hex` with local Hex **Whisper large-v3-turbo**, default language `ru`
-- Browser: `dsh-agent-browser@0.2.7` — `browser_*` tools for every model + live viewport
-  panel inside the GUI; managed Chrome via `agent-browser install`
+- Browser: local `dsh-agent-browser` fork in `plugins/agent-browser` — `browser_*` tools for
+  every model + live viewport docked in the right sidebar; per-chat page context; managed
+  Chrome via `agent-browser install`
 - Extras: `impeccable` skill installed globally under `~/.dsh/skills/impeccable`
 
 ## What is in the repository
