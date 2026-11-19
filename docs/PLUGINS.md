@@ -1,4 +1,4 @@
-# Plugin inventory (snapshot 2026-11-18)
+# Plugin inventory (snapshot 2026-11-19)
 
 Versions are pinned in `profile/package.json`. Third-party plugins are installed from npm
 unless noted. Local plugins are copied into the profile `plugins/` directory.
@@ -11,6 +11,7 @@ unless noted. Local plugins are copied into the profile `plugins/` directory.
 | `dsh-inline-bash` | `plugins/inline-bash` | `!cmd` in composer, local execution, no model turn |
 | `dsh-worktree-lifecycle` | `plugins/worktree-lifecycle` | Cascade-delete DSH worktree + `dsh-*` branch on session delete; per-project create hook (UI tab) |
 | `dsh-limits-strip` | `plugins/limits-strip` | Limits card in the left sidebar footer; click opens full Limits |
+| `dsh-agent-browser` | `plugins/agent-browser` | Local fork: `browser_*` tools for every model, live viewport docked in the right sidebar, per-chat page context, managed Chrome |
 | `dsh-voice-hex` | `plugins/voice-hex` | Local speech-to-text via Hex: Whisper large-v3-turbo, Parakeet, Qwen3-ASR, GigaAM, ...; DSH provider picker |
 
 ## Third-party bundles
@@ -46,7 +47,8 @@ pnpm add @dungsil/dsh-plugin-forge-gitlab@0.1.1
 pnpm add github:bondiano/dsh-usage-limits \
   "github:bondiano/whale-girl-ru#8e9176e"
 pnpm add file:plugins/dsh-claude-ui file:plugins/inline-bash \
-  file:plugins/worktree-lifecycle file:plugins/limits-strip file:plugins/voice-hex
+  file:plugins/worktree-lifecycle file:plugins/limits-strip file:plugins/agent-browser \
+  file:plugins/voice-hex
 ```
 
 Add each package name to `dsh.profile.bundles` (the restore profile already does). The
