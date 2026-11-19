@@ -375,3 +375,15 @@
     allowTakeover: true
     allowEval: false
     cookiesRedacted: true
+
+# ── Subagents: allow Kimi routes for new Sessions ─────────────────────────────
+# The key is KIMI_CODING_API_KEY in ~/.dsh/.credentials.yaml, never in git.
+- id: subagent-model-selection-settings
+  name: "@deepseek-ai/dsh-tool-subagent/model-selection-settings"
+  config:
+    enabled: true
+    allowedModels:
+      - provider: kimi-coding
+        model: k3
+      - provider: kimi-coding
+        model: k3.1-pro

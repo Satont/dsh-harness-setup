@@ -63,3 +63,6 @@ Add each package name to `dsh.profile.bundles` (the restore profile already does
   and 6.2. The profile overrides `codexClientVersion: "0.167.2"`.
 - `whale-girl` is installed from the Russian fork at commit `8e9176e`; it is a bundle
   (`dsh.bundle` + client) and needs Node >=24. It replaces the old English Whale-chan.
+- Subagent model selection allows Kimi K3 and K3.1 Pro (`kimi-coding`) for new Sessions;
+  the key is `KIMI_CODING_API_KEY` in `~/.dsh/.credentials.yaml`. Existing Sessions keep
+  the route list recorded at creation.

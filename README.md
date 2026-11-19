@@ -24,6 +24,8 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 - Browser: local `dsh-agent-browser` fork in `plugins/agent-browser` — `browser_*` tools for
   every model + live viewport docked in the right sidebar; per-chat page context; managed
   Chrome via `agent-browser install`
+- Subagents: model selection enabled for new Sessions; Kimi K3/K3.1 Pro route
+  (`kimi-coding`) plus the default DeepSeek route
 - Extras: `impeccable` skill installed globally under `~/.dsh/skills/impeccable`
 
 ## What is in the repository

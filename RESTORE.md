@@ -89,6 +89,13 @@ DeepSeek API access is configured via credentials/`DEEPSEEK_API_KEY`; use **Sett
 or your usual secret provisioning. The Limits card reads the DeepSeek balance through the
 host credential seam.
 
+### Kimi subagents (optional)
+
+The profile allows **Kimi K3 / K3.1 Pro** as subagent routes for new Sessions (Plugins →
+Subagent). Put the Moonshot coding key in `~/.dsh/.credentials.yaml` as
+`KIMI_CODING_API_KEY`; it is never committed. Existing Sessions keep their recorded route
+list — start a new Session to use Kimi there.
+
 ### GitLab
 
 ```bash
