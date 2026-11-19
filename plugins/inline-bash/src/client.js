@@ -31,7 +31,7 @@ const MAX_BYTES = 8 * 1024;
 const CSS_TAG = 'dsh-inline-bash/inline-bash.css';
 
 const CSS = `
-.ibx-root{display:flex;flex-direction:column;gap:6px;width:fit-content;max-width:min(calc(100% - 32px),var(--dsh-chat-content-width,920px));min-width:min(100%,360px);margin:0 0 8px max(0px,calc((100% - var(--dsh-chat-content-width,920px)) / 2));font-family:var(--claude-mono,ui-monospace,"SF Mono",Menlo,monospace)}
+.ibx-root{display:flex;flex-direction:column;gap:6px;width:fit-content;max-width:min(calc(100% - 32px),var(--dsh-chat-content-width,920px));min-width:min(100%,360px);margin:0 0 8px max(0px,calc((100% - var(--dsh-chat-content-width,920px)) / 2 - var(--dsh-composer-dock-inset,8px) - var(--dsh-composer-dock-inset,8px)));font-family:var(--claude-mono,ui-monospace,"SF Mono",Menlo,monospace)}
 .ibx-mode{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;border:1px solid var(--claude-clay,rgba(217,119,87,.55));background:rgba(217,119,87,.10);color:var(--claude-clay,#d97757);font-size:12px;line-height:1.4}
 .ibx-badge{font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:4px;background:var(--claude-clay,#d97757);color:var(--claude-surface,#1f1e1b)}
 .ibx-hint{opacity:.8;font-size:11px}
