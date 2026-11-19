@@ -11,7 +11,6 @@ unless noted. Local plugins are copied into the profile `plugins/` directory.
 | `dsh-inline-bash` | `plugins/inline-bash` | `!cmd` in composer, local execution, no model turn |
 | `dsh-worktree-lifecycle` | `plugins/worktree-lifecycle` | Cascade-delete DSH worktree + `dsh-*` branch on session delete; per-project create hook (UI tab) |
 | `dsh-limits-strip` | `plugins/limits-strip` | Limits card in the left sidebar footer; click opens full Limits |
-| `dsh-whale-maid-mascot` | `plugins/whale-maid-en` | Whale-chan (English-localized fork; original is MIT, see `LICENSE`/`NOTICE`) |
 | `dsh-voice-hex` | `plugins/voice-hex` | Local speech-to-text via Hex: Whisper large-v3-turbo, Parakeet, Qwen3-ASR, GigaAM, ...; DSH provider picker |
 
 ## Third-party bundles
@@ -30,6 +29,7 @@ unless noted. Local plugins are copied into the profile `plugins/` directory.
 | `dsh-better-sidebar` | 0.32.0 | Side card: files/editor/changes/tasks/chat. **0.32.1 requires DSH 0.2.2-rc.2** |
 | `dsh-context` | 0.85.1 | Context Insights dashboard/commands |
 | `dsh-plugin` | 2.3.9 | Settings → Plugin Hub (community marketplace) |
+| `whale-girl` | 0.4.0-ru.2 | Russian Whale-girl pet (chat/voice/news, MIT); GitHub `bondiano/whale-girl-ru` |
 | `@local/dsh-usage-limits` | github:bondiano/dsh-usage-limits | Full **Limits** page in the left sidebar |
 | `dsh-plugin-subscriptions` extras | — | Provides the Codex quota pill used by the full Limits API |
 
@@ -43,10 +43,10 @@ pnpm add @hualiong/dsh-session-delete@0.4.3 dsh-plugin-memory@0.19.5
 pnpm add dsh-plugin-cost-usage@0.1.0 dsh-notification-hook@0.3.0
 pnpm add @kyf-eng/dsh-threads@0.2.0 dsh-project-mcp@0.4.3
 pnpm add @dungsil/dsh-plugin-forge-gitlab@0.1.1
-pnpm add github:bondiano/dsh-usage-limits
+pnpm add github:bondiano/dsh-usage-limits \
+  "github:bondiano/whale-girl-ru#8e9176e"
 pnpm add file:plugins/dsh-claude-ui file:plugins/inline-bash \
-  file:plugins/worktree-lifecycle file:plugins/limits-strip file:plugins/whale-maid-en \
-  file:plugins/voice-hex
+  file:plugins/worktree-lifecycle file:plugins/limits-strip file:plugins/voice-hex
 ```
 
 Add each package name to `dsh.profile.bundles` (the restore profile already does). The
@@ -59,5 +59,5 @@ Add each package name to `dsh.profile.bundles` (the restore profile already does
   version compatible with rc.1.
 - `dsh-plugin-subscriptions` defaults to Codex client version `0.153.4`, which hides GPT-6.1
   and 6.2. The profile overrides `codexClientVersion: "0.167.2"`.
-- `dsh-whale-maid-mascot` is a local English fork. Do not overwrite it with the npm package
-  unless you want the original Spanish/Chinese strings back.
+- `whale-girl` is installed from the Russian fork at commit `8e9176e`; it is a bundle
+  (`dsh.bundle` + client) and needs Node >=24. It replaces the old English Whale-chan.

@@ -62,7 +62,7 @@ Open the URL printed by `dsh web`. In the sidebar you should see:
 - **Plugins**, **Artifacts**, **Automation tasks**, **Context Insights**, **Projects**,
   **Limits**, **More**
 - a **Limits** card in the sidebar footer with Codex/OpenCode/DeepSeek values
-- a whale-girl companion in the lower-right corner (English)
+- a Russian **Whale-girl** pet in the lower-right corner
 - the **Limits** card click opens the full panel with provider quotas and model/platform limits
 
 If a bundle is missing, read the startup output for `did not activate` / `pending` and fix
@@ -212,7 +212,7 @@ The static host must serve files with a sandbox CSP and no cookies; see
 - [ ] Codex subscription is connected; Limits shows plan + weekly %; composer shows GPT-6.1/6.2
 - [ ] New chat answers a trivial prompt; model route is **codex**, not legacy `openai-codex`
 - [ ] `dsh-better-sidebar` side card opens; `dsh-context` dashboard opens
-- [ ] Whale-chan is visible and speaks English
+- [ ] Whale-girl (RU) is visible, speaks Russian, and opens its menu
 - [ ] Worktree checkbox creates a worktree and branch; deleting that session removes both
 - [ ] GitLab/GitHub forge panel sees the repo; `gh auth status` / `glab auth status` are clean
 - [ ] `dsh-share` publishes a page; `curl -I` shows sandbox CSP; revoke works

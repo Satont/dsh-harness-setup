@@ -19,7 +19,7 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 - Main model: Codex subscription route `codex`, default `GPT-6.2-Sol`, medium effort
 - Extra UI: `dsh-better-sidebar@0.32.0`, `dsh-context@0.85.1`,
   `dsh-plugin@2.3.9` (Plugin Hub), `@local/dsh-usage-limits` (Limits panel),
-  `dsh-limits-strip` (local sidebar card), `dsh-whale-maid-mascot` English fork
+  `dsh-limits-strip` (local sidebar card), `whale-girl` Russian pet
 - Voice: `dsh-voice-hex` with local Hex **Whisper large-v3-turbo**, default language `ru`
 - Browser: local `dsh-agent-browser` fork in `plugins/agent-browser` — `browser_*` tools for
   every model + live viewport docked in the right sidebar; per-chat page context; managed
@@ -33,7 +33,7 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 | `AGENTS.md` | Instructions for the next agent: how to restore safely, what never to commit |
 | `RESTORE.md` | Step-by-step restore, verification, and failure recovery |
 | `profile/` | Profile manifests: `package.json`, `cordis.patch.yml`, pnpm settings |
-| `plugins/` | Local plugin source: theme, inline bash, worktrees, limits card, Whale-chan EN |
+| `plugins/` | Local plugin source: theme, inline bash, worktrees, limits card, patched agent browser |
 | `ops/` | Desktop wrapper, mobile/VPS helpers, artifact sharing script, systemd units |
 | `docs/` | Architecture, plugin inventory, VPS/mobile runbook, operations, secrets |
 | `scripts/restore-profile.sh` | Build a fresh profile from this repo (backs up existing manifests) |
@@ -47,9 +47,9 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 |---|---|
 | ![Limits panel](docs/screenshots/limits-panel.jpg) | ![Limits card](docs/screenshots/limits-sidebar.jpg) |
 
-| Whale-chan | Voice Input (Hex) |
+| Whale-girl (RU) | Voice Input (Hex) |
 |---|---|
-| ![Whale-chan](docs/screenshots/whale-chan.jpg) | ![Voice Input](docs/screenshots/voice-hex.jpg) |
+| ![Whale-girl](docs/screenshots/whale-girl.jpg) | ![Voice Input](docs/screenshots/voice-hex.jpg) |
 
 | Agent browser (live, docked) | |
 |---|---|

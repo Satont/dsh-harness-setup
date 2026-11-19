@@ -203,6 +203,13 @@ export function apply(ctx, rawConfig) {
             await ensureDomainAllowed(args.url, exec, s);
             const sess = registry.session(s);
             const signal = exec.signal;
+            // The live panel is a tall right sidebar; keep the page viewport
+            // portrait so the stream fills it instead of letterboxing.
+            await sess.client.call(["set", "viewport", "600", "1400"], {
+                ...(s ? { session: s } : {}),
+                timeoutMs: TIMEOUTS.navTimeoutMs,
+                signal,
+            });
             if (args.newTab) {
                 await sess.tabNew(args.url, undefined, { timeoutMs: TIMEOUTS.navTimeoutMs, signal });
                 const tabs = await sess.tabs({ signal });
@@ -720,7 +727,7 @@ export function apply(ctx, rawConfig) {
         },
         timeoutMs: TIMEOUTS.readTimeoutMs,
         isConcurrencySafe: () => false,
-        execute: async (args) => {
+        execute: async (args, exec) => {
             switch (args.action) {
                 case "list": {
                     const sessions = registry.list().map((entry) => ({
