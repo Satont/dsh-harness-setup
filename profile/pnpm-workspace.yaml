@@ -5,3 +5,6 @@ nodeLinker: hoisted
 autoInstallPeers: false
 minimumReleaseAgeExclude:
   - '@dungsil/dsh-plugin-forge-gitlab@0.1.1'
+
+allowBuilds:
+  agent-browser: true

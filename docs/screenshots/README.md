@@ -10,4 +10,5 @@ sidebar is cropped where session names would appear.
 | `limits-sidebar.jpg` | Limits card in the sidebar footer |
 | `whale-chan.jpg` | English Whale-chan companion and bubble |
 | `voice-hex.jpg` | Voice Input: Hex · Whisper large-v3-turbo, Russian language |
+| `agent-browser.png` | Live agent browser docked as the right sidebar after a model opened and clicked a page |
 | `mobile.jpg` | The same UI on a phone (PWA) |

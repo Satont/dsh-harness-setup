@@ -127,6 +127,29 @@ global model, so the plugin restores the previous selection afterwards.
 
 No audio leaves the machine: browser -> DSH speech service -> host plugin -> `hex transcribe`.
 
+## 4.2 Agent browser (live viewport)
+
+`dsh-agent-browser` exposes `browser_open`, `browser_snapshot`, `browser_find`,
+`browser_act`, `browser_get`, `browser_eval`, `browser_screenshot`, `browser_tabs` and
+`browser_session` to every model, and streams the page into the GUI.
+
+```bash
+# once per machine (the profile already allows this build script)
+agent-browser install
+agent-browser --help              # sanity check
+
+# after starting DSH, ask any model to browse; the panel appears automatically
+```
+
+The panel is a small chip at first. Click it, then the **▤** button to dock it as the right
+sidebar; the mode is stored in browser localStorage. **🖱** toggles human takeover, so you can
+click/scroll in the live page yourself. The managed Chrome lives in
+`~/.agent-browser/browsers/`, independent of the distro Chromium.
+
+If `browser_open` fails with `Chrome exited early`, run `agent-browser install` (do not
+point it at a broken `/usr/bin/chromium`). The profile sets `allowTakeover: true`; the tool
+still requires normal DSH permission for eval.
+
 ## 5. Skills
 
 Global skills are not part of this repo. To recreate the design skill:

@@ -363,3 +363,15 @@
         sandbox: danger-full-access
         approval: never
     defaultPreset: danger-full-access
+
+# ── Agent browser: live viewport inside DSH, human takeover enabled ───────────
+# dsh-agent-browser drives a managed Chrome over CDP and streams the viewport
+# into the GUI. Install Chrome once with `agent-browser install`.
+- id: browser
+  config:
+    autoOpenPanel: true
+    idleTimeoutMinutes: 30
+    headed: false
+    allowTakeover: true
+    allowEval: false
+    cookiesRedacted: true

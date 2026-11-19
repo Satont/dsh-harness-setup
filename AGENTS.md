@@ -40,8 +40,8 @@ copy.
 5. Start `dsh --profile <profile>` on a spare port; check the startup banner and plugin
    activation. Fix failures before continuing.
 6. Sign in to subscriptions, GitLab, MCP providers, enable Hex's `transcribe-files` lab and
-   confirm the Whisper model, and install the global `impeccable` skill if requested. These
-   steps require the owner.
+   confirm the Whisper model, run `agent-browser install` for the managed browser, and
+   install the global `impeccable` skill if requested. These steps require the owner.
 7. For mobile: create `~/.config/dsh-mobile/vps.conf` from the owner's secrets, deploy the
    VPS relay from `ops/vps/`, and test token exchange end-to-end.
 8. Report what works, what still needs the owner, and every secret that must be re-entered.

@@ -27,7 +27,8 @@
         "@local/dsh-usage-limits",
         "dsh-whale-maid-mascot",
         "dsh-limits-strip",
-        "dsh-voice-hex"
+        "dsh-voice-hex",
+        "dsh-agent-browser"
       ]
     }
   },
@@ -50,6 +51,7 @@
     "dsh-project-mcp": "0.4.3",
     "dsh-whale-maid-mascot": "file:plugins/whale-maid-en",
     "dsh-worktree-lifecycle": "file:plugins/worktree-lifecycle",
-    "dsh-voice-hex": "file:plugins/voice-hex"
+    "dsh-voice-hex": "file:plugins/voice-hex",
+    "dsh-agent-browser": "^0.2.7"
   }
 }

@@ -1,8 +1,9 @@
 # DSH Harness Setup
 
 A reproducible backup of a DeepSeek Harness (DSH) "Claude Code Desktop" style setup:
-warm dark UI, GPT/Codex and other subscriptions as models, project threads, memory,
-artifacts with public sharing, session/worktree lifecycle, project skills and MCP,
+warm dark UI, GPT/Codex and other subscriptions as models, a visible agent browser
+(any model can open, click and read pages while you watch inside DSH), project threads,
+memory, artifacts with public sharing, session/worktree lifecycle, project skills and MCP,
 and a phone-friendly HTTPS route through a small VPS.
 
 This repository is a **template + runbook**, not a copy of the private DSH home.
@@ -20,6 +21,8 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
   `dsh-plugin@2.3.9` (Plugin Hub), `@local/dsh-usage-limits` (Limits panel),
   `dsh-limits-strip` (local sidebar card), `dsh-whale-maid-mascot` English fork
 - Voice: `dsh-voice-hex` with local Hex **Whisper large-v3-turbo**, default language `ru`
+- Browser: `dsh-agent-browser@0.2.7` — `browser_*` tools for every model + live viewport
+  panel inside the GUI; managed Chrome via `agent-browser install`
 - Extras: `impeccable` skill installed globally under `~/.dsh/skills/impeccable`
 
 ## What is in the repository
@@ -46,6 +49,10 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 | Whale-chan | Voice Input (Hex) |
 |---|---|
 | ![Whale-chan](docs/screenshots/whale-chan.jpg) | ![Voice Input](docs/screenshots/voice-hex.jpg) |
+
+| Agent browser (live, docked) | |
+|---|---|
+| ![Agent browser](docs/screenshots/agent-browser.png) | Model opened and clicked a real page; the viewport is docked in the right sidebar. |
 
 ![Mobile](docs/screenshots/mobile.jpg)
 
