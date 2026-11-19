@@ -91,6 +91,21 @@ function boundOutput(text) {
 }
 
 /**
+ * Strip the human card's `$ command` header and final exit line so the copy
+ * button yields only the command output (stdout/stderr plus status notes).
+ * @param {object} result - card result with `cmd` and full `text`.
+ * @returns {string} output-only text.
+ */
+function outputOnly(result) {
+  const text = String(result.text == null ? '' : result.text);
+  const cmd = String(result.cmd == null ? '' : result.cmd);
+  const header = '$ ' + cmd;
+  let body = text.startsWith(header) ? text.slice(header.length) : text.replace(/^\$[^\n]*\n?/, '');
+  body = body.replace(/\n(?:exit \d+|signal [^\n]+|no exit code)\s*$/, '');
+  return body.replace(/^\n+/, '').replace(/\n+$/, '');
+}
+
+/**
  * Short single-line rendering of a command for the card header.
  * @param {string} command - command text.
  * @returns {string} one-line command.
@@ -125,7 +140,7 @@ function ResultCard({ result, onClose, onSend }) {
   const [copyState, setCopyState] = React.useState('idle');
   const canSend = (result.kind === 'ok' || result.kind === 'fail') && typeof onSend === 'function';
   const copy = React.useCallback(async () => {
-    const text = String(result.text == null ? '' : result.text);
+    const text = outputOnly(result);
     try {
       if (navigator.clipboard !== undefined && typeof navigator.clipboard.writeText === 'function') {
         await navigator.clipboard.writeText(text);
@@ -145,7 +160,7 @@ function ResultCard({ result, onClose, onSend }) {
       setCopyState('error');
       window.setTimeout(() => setCopyState('idle'), 1600);
     }
-  }, [result.text]);
+  }, [result]);
   const copyLabel = copyState === 'copied' ? 'Скопировано' : copyState === 'error' ? 'Ошибка' : 'Копировать';
   const send = React.useCallback(async () => {
     if (!canSend || sendState === 'sending' || sendState === 'sent') return;

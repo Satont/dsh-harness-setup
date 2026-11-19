@@ -67,7 +67,7 @@ so a page reload picks the new `client.js`).
 | **Shift+Enter** | Inserts a newline as usual; a multi-line `!` draft runs as one script on Enter |
 | **Escape** (draft starts with `!`) | Clears the draft and leaves bash mode |
 | `×` on the card | Dismisses the local result card |
-| `Копировать` on the card | Copies the full command result to the clipboard; the label briefly changes to `Скопировано` (or `Ошибка`) |
+| `Копировать` on the card | Copies only the command output (stdout/stderr, without the `$ command` header or final exit line); the label briefly changes to `Скопировано` (or `Ошибка`) |
 | `→ В чат` on the card | Sends the command result (bounded display text) as one model message to the current chat; the button changes to `Отправлено` |
 | Any ordinary draft | Completely untouched — Enter is never intercepted |
 
