@@ -31,7 +31,7 @@ const MAX_BYTES = 8 * 1024;
 const CSS_TAG = 'dsh-inline-bash/inline-bash.css';
 
 const CSS = `
-.ibx-root{display:flex;flex-direction:column;gap:6px;margin:0 0 8px;font-family:var(--claude-mono,ui-monospace,"SF Mono",Menlo,monospace)}
+.ibx-root{display:flex;flex-direction:column;gap:6px;margin:0 0 8px;width:fit-content;max-width:min(100%,680px);min-width:min(100%,360px);font-family:var(--claude-mono,ui-monospace,"SF Mono",Menlo,monospace)}
 .ibx-mode{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;border:1px solid var(--claude-clay,rgba(217,119,87,.55));background:rgba(217,119,87,.10);color:var(--claude-clay,#d97757);font-size:12px;line-height:1.4}
 .ibx-badge{font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 6px;border-radius:4px;background:var(--claude-clay,#d97757);color:var(--claude-surface,#1f1e1b)}
 .ibx-hint{opacity:.8;font-size:11px}
@@ -43,6 +43,9 @@ const CSS = `
 .ibx-exit.ok{color:var(--dsw-alias-state-success-primary,#4caf7d);border-color:var(--dsw-alias-state-success-primary,#4caf7d)}
 .ibx-exit.fail{color:var(--dsw-alias-label-error,#e06c75);border-color:var(--dsw-alias-label-error,#e06c75)}
 .ibx-exit.hint,.ibx-exit.running{color:var(--dsw-alias-label-tertiary,#a9a49a);border-color:var(--dsw-alias-border-l3,rgba(255,255,255,.16))}
+.ibx-send{flex:none;display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border:1px solid var(--claude-clay,rgba(217,119,87,.55));border-radius:5px;background:rgba(217,119,87,.10);color:var(--claude-clay,#d97757);font:inherit;font-size:10px;line-height:1.5;cursor:pointer;white-space:nowrap}
+.ibx-send:hover{background:rgba(217,119,87,.22)}
+.ibx-send:disabled{opacity:.55;cursor:default}
 .ibx-close{flex:none;display:flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:none;border-radius:5px;background:transparent;color:var(--dsw-alias-label-tertiary,#a9a49a);font-size:14px;line-height:1;cursor:pointer}
 .ibx-close:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.08));color:var(--dsw-alias-label-primary,#f5f4ef)}
 .ibx-out{margin:0;padding:8px 10px;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary,#d6d2c7)}
@@ -110,17 +113,40 @@ function CloseButton({ onClose }) {
 
 /**
  * Render the local result card for one command.
- * @param {{result: object, onClose: () => void}} props - card data and close handler.
+ * @param {{result: object, onClose: () => void, onSend?: (text: string) => Promise<void>}} props - card data, close handler and optional send-to-chat handler.
  * @returns {object} React element.
  */
-function ResultCard({ result, onClose }) {
+function ResultCard({ result, onClose, onSend }) {
   const bounded = boundOutput(result.text);
+  const [sendState, setSendState] = React.useState('idle');
+  const canSend = (result.kind === 'ok' || result.kind === 'fail') && typeof onSend === 'function';
+  const send = React.useCallback(async () => {
+    if (!canSend || sendState === 'sending' || sendState === 'sent') return;
+    setSendState('sending');
+    const note = bounded.truncated ? '\n[output truncated for display]' : '';
+    const payload = 'Результат inline bash:\n\n' + (bounded.text.length > 0 ? bounded.text : '(no output)') + note;
+    try {
+      await onSend(payload);
+      setSendState('sent');
+    } catch {
+      setSendState('error');
+    }
+  }, [bounded.text, bounded.truncated, canSend, onSend, sendState]);
   const badge = result.kind === 'ok' ? 'exit 0' : result.kind === 'fail' ? 'failed' : result.kind === 'running' ? 'running' : 'hint';
+  const sendLabel = sendState === 'sent' ? 'Отправлено' : sendState === 'sending' ? 'Отправка…' : sendState === 'error' ? 'Повторить' : '→ В чат';
   return h('div', { className: 'ibx-card', 'data-inline-bash-result': result.kind },
     h('div', { className: 'ibx-head' },
       h('span', { className: 'ibx-badge' }, 'BASH'),
       h('code', { className: 'ibx-cmd', title: result.cmd }, oneLine(result.cmd) || '(empty)'),
       h('span', { className: 'ibx-exit ' + (result.kind === 'fail' ? 'fail' : result.kind === 'ok' ? 'ok' : 'hint') }, badge),
+      canSend ? h('button', {
+        type: 'button',
+        className: 'ibx-send',
+        disabled: sendState === 'sending' || sendState === 'sent',
+        title: sendState === 'error' ? 'Не удалось отправить, попробовать ещё раз' : 'Отправить результат в текущий чат модели',
+        'aria-label': 'Send inline bash result to the current chat',
+        onClick: () => { void send(); },
+      }, sendLabel) : null,
       h(CloseButton, { onClose }),
     ),
     h('pre', { className: 'ibx-out', 'data-inline-bash-output': 'true' }, bounded.text.length > 0 ? bounded.text : '(no output)'),
@@ -135,7 +161,7 @@ function ResultCard({ result, onClose }) {
  * @returns {object|null} dock content, or null while idle in plain mode.
  */
 function InlineBashDock(props) {
-  const { run, clearDraft } = props;
+  const { run, send, clearDraft } = props;
   const useInput = props.useInput;
   const draftFromInput = useInput !== undefined ? useInput((state) => state.draft) : undefined;
   const draft = draftFromInput !== undefined
@@ -253,13 +279,13 @@ function InlineBashDock(props) {
       )
       : null,
     result !== null
-      ? h(ResultCard, { result, onClose: () => setResult(null) })
+      ? h(ResultCard, { result, onClose: () => setResult(null), onSend: send })
       : null,
   );
 }
 
 /** Required client services: the slot registry and the Session-addressed command Remote. */
-const inject = ['slots', 'remote', 'remote.commands'];
+const inject = ['slots', 'remote', 'remote.commands', 'sessions', 'conversation'];
 
 /**
  * Client plugin body.
@@ -282,6 +308,11 @@ function apply(ctx) {
         }
         if (result.value === undefined) throw new Error('unknown host command: /bash');
         return result.value.result;
+      },
+      send: async (text) => {
+        const binding = ctx.sessions.binding(sessionId);
+        if (binding === undefined) throw new Error('inline-bash: session is not materialized');
+        await ctx.conversation.sendSession(binding.session, text, [], 'queue');
       },
     }),
   }, InlineBashDock));

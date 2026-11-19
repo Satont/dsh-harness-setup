@@ -67,7 +67,14 @@ so a page reload picks the new `client.js`).
 | **Shift+Enter** | Inserts a newline as usual; a multi-line `!` draft runs as one script on Enter |
 | **Escape** (draft starts with `!`) | Clears the draft and leaves bash mode |
 | `×` on the card | Dismisses the local result card |
+| `→ В чат` on the card | Sends the command result (bounded display text) as one model message to the current chat; the button changes to `Отправлено` |
 | Any ordinary draft | Completely untouched — Enter is never intercepted |
+
+The card is content-sized and capped at **680 px**, so short commands no longer
+stretch across the whole composer. The `→ В чат` button posts the displayed
+result (plus a truncation note when applicable) through
+`conversation.sendSession(...)`, which starts a normal model turn in the same
+Session; the command itself still never enters model context automatically.
 
 The command runs through the mounted `ctx.shell` executor exactly as a
 model-invoked `bash` tool call would: the per-call sandbox policy is resolved
