@@ -52,6 +52,6 @@
     "dsh-whale-maid-mascot": "file:plugins/whale-maid-en",
     "dsh-worktree-lifecycle": "file:plugins/worktree-lifecycle",
     "dsh-voice-hex": "file:plugins/voice-hex",
-    "dsh-agent-browser": "^0.2.7"
+    "dsh-agent-browser": "0.2.7"
   }
 }
