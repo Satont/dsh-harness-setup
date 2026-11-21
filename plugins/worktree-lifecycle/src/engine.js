@@ -8,6 +8,9 @@ import path from 'node:path'
 
 /** Branch prefix that marks a DSH-created worktree branch. */
 export const BRANCH_PREFIX = 'dsh-'
+
+/** Directory prefix that marks a DSH-created worktree even after its branch was renamed. */
+export const WORKTREE_NAME_PREFIX = 'dsh-'
 /** Checkout pools used by DSH worktree creators, relative to the project root. */
 export const POOL_SEGMENTS = [
   ['.agents', 'worktrees'],
@@ -79,7 +82,9 @@ export function inspectCheckout(startDir) {
  *     `<something>/.dsh/worktrees/` (the DSH pools);
  *   - `<gitdir>/gitdir` points back at this worktree's `.git` file
  *     (Git's own registration proof);
- *   - the worktree HEAD is a branch whose name starts with `dsh-`.
+ *   - the worktree HEAD branch starts with `dsh-`, **or** the worktree was
+ *     created under a `dsh-*` directory name in a DSH pool (a renamed branch
+ *     must not orphan the worktree).
  *
  * @returns `{worktreePath, mainRepo, gitdir, name, branch}` or null.
  */
@@ -116,7 +121,9 @@ export function classifyWorktree(cwd) {
   const head = readTextOrNull(path.join(gitdir, 'HEAD'))
   const headMatch = head === null ? null : /^ref:\s*refs\/heads\/(.+?)\s*$/.exec(head)
   const branch = headMatch ? headMatch[1] : null
-  if (branch === null || !branch.startsWith(BRANCH_PREFIX)) return null
+  const branchOwned = branch !== null && branch.startsWith(BRANCH_PREFIX)
+  const directoryOwned = name.startsWith(WORKTREE_NAME_PREFIX) && path.basename(worktreePath) === name
+  if (!branchOwned && !directoryOwned) return null
 
   return { worktreePath, mainRepo, gitdir, name, branch }
 }
@@ -147,14 +154,14 @@ export function parseWorktreeList(text) {
 }
 
 /**
- * Remove one DSH-created worktree and its `dsh-*` branch.
+ * Remove one DSH-created worktree; delete its `dsh-*` branch when it still has one.
  *
  * Safety invariants (any failure aborts the step, never falls back to rm -rf):
  *   1. the path must be a linked worktree registered in the main repo's
  *      `.git/worktrees/` and live inside a DSH pool at the time we look;
  *   2. the path must never equal the main project checkout;
- *   3. the branch must start with `dsh-` and must not be checked out in any
- *      other registered worktree;
+ *   3. a `dsh-*` branch must not be checked out in any other registered worktree;
+ *      a renamed user branch is preserved (only the worktree is removed);
  *   4. `git worktree remove --force` must actually deregister the path before
  *      the branch is deleted.
  * The function is idempotent: a missing path just prunes a stale registration.
@@ -181,10 +188,8 @@ export async function cleanupWorktree({ target, run, log = () => {} }) {
   const recordedPath = target?.path ? canonical(target.path) : null
   const recordedBranch = typeof target?.branch === 'string' ? target.branch : null
   if (!recordedPath) return skip('no recorded worktree path')
-  if (recordedBranch !== null && !recordedBranch.startsWith(BRANCH_PREFIX)) {
-    return skip(`branch ${JSON.stringify(recordedBranch)} is not dsh-*`)
-  }
 
+  let detectedBranch = recordedBranch
   const exists = statOrNull(recordedPath)
   let mainRepo = target?.repo ? canonical(target.repo) : null
   if (exists) {
@@ -197,6 +202,7 @@ export async function cleanupWorktree({ target, run, log = () => {} }) {
       return skip('recorded repository does not match the worktree registration')
     }
     mainRepo = canonical(detected.mainRepo)
+    detectedBranch = detected.branch ?? recordedBranch
     if (isWithin(recordedPath, mainRepo)) return skip('worktree path contains the main checkout')
   } else {
     if (mainRepo === null) return skip('worktree is already gone and no repository was recorded')
@@ -205,8 +211,9 @@ export async function cleanupWorktree({ target, run, log = () => {} }) {
 
   if (mainRepo === null) return skip('no repository resolved')
   if (canonical(mainRepo) === recordedPath) return skip('path is the main checkout')
-  const targetBranch = recordedBranch
-  if (targetBranch === null) return skip('no recorded branch')
+  const branchToDelete = detectedBranch !== null && detectedBranch.startsWith(BRANCH_PREFIX)
+    ? detectedBranch
+    : null
 
   const git = (args, allowed = [0]) => run(['git', ...args], { cwd: mainRepo, allowedExitCodes: allowed })
 
@@ -249,21 +256,27 @@ export async function cleanupWorktree({ target, run, log = () => {} }) {
   } catch (error) {
     return skip(`cannot re-list worktrees: ${errorText(error)}`)
   }
-  const user = listed.find((entry) => entry.branch === targetBranch)
-  if (user) return skip(`branch ${targetBranch} is still checked out at ${user.path}`)
+  if (branchToDelete === null) {
+    const detail = `branch ${JSON.stringify(detectedBranch)} preserved (not dsh-*)`
+    result.reasons.push(detail)
+    log(detail)
+    return result
+  }
+  const user = listed.find((entry) => entry.branch === branchToDelete)
+  if (user) return skip(`branch ${branchToDelete} is still checked out at ${user.path}`)
   if (listed.some((entry) => canonical(entry.path) === recordedPath)) {
     return skip('worktree registration survived removal')
   }
 
   try {
-    await git(['branch', '-D', targetBranch])
+    await git(['branch', '-D', branchToDelete])
     result.removedBranch = true
-    log(`deleted branch ${targetBranch}`)
+    log(`deleted branch ${branchToDelete}`)
   } catch (error) {
     // A missing branch (already deleted manually) is fine; report it.
     const text = errorText(error)
     result.reasons.push(`branch delete failed: ${text}`)
-    log(`branch ${targetBranch} not deleted: ${text}`)
+    log(`branch ${branchToDelete} not deleted: ${text}`)
   }
   return result
 }

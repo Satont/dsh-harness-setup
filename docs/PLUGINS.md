@@ -9,7 +9,7 @@ unless noted. Local plugins are copied into the profile `plugins/` directory.
 |---|---|---|
 | `dsh-claude-ui` | `plugins/dsh-claude-ui` | Warm dark Claude-Code-like theme; CSS/client only |
 | `dsh-inline-bash` | `plugins/inline-bash` | `!cmd` in composer, local execution, no model turn |
-| `dsh-worktree-lifecycle` | `plugins/worktree-lifecycle` | Cascade-delete DSH worktree + `dsh-*` branch on session delete; per-project create hook (UI tab) |
+| `dsh-worktree-lifecycle` | `plugins/worktree-lifecycle` | Cascade-delete DSH worktree on session delete; delete `dsh-*` branch, preserve a renamed user branch; per-project create hook (UI tab) |
 | `dsh-limits-strip` | `plugins/limits-strip` | Limits card in the left sidebar footer; click opens full Limits |
 | `dsh-agent-browser` | `plugins/agent-browser` | Local fork: `browser_*` tools for every model, live viewport docked in the right sidebar, per-chat page context, managed Chrome |
 | `dsh-voice-hex` | `plugins/voice-hex` | Local speech-to-text via Hex: Whisper large-v3-turbo, Parakeet, Qwen3-ASR, GigaAM, ...; DSH provider picker |

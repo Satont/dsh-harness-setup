@@ -4,8 +4,9 @@ A local **DSH host plugin** that adds the two missing lifecycle behaviours to
 DSH-created Git worktrees:
 
 1. **Cascade delete** — when a Session is deleted, remove the DSH-created
-   worktree and its `dsh-*` branch. Plain project checkouts and manually created
-   worktrees are never touched.
+   worktree. Its `dsh-*` branch is deleted too; if the branch was renamed to a
+   user branch, only the worktree is removed and the branch is preserved. Plain
+   project checkouts and manually created worktrees are never touched.
 2. **Per-project create hook** — when a Session starts working inside a
    DSH-created worktree, run the project's setup hook once
    (`<project>/.dsh/worktree-create.{json,sh}`, plus `.dsh/worktree-create.d/*`).
@@ -28,10 +29,10 @@ cp package.json package.json.bak-$(date -u +%Y%m%dT%H%M%SZ)
 cp cordis.patch.yml cordis.patch.yml.bak-$(date -u +%Y%m%dT%H%M%SZ)
 
 # 2. install the package (file: dependency on the local checkout)
-pnpm add file:$HOME/dsh-workspace/worktree-lifecycle
+pnpm add file:/home/satont/Documents/deepseek-harness/default-workspace/worktree-lifecycle
 
 #    ...or through the CLI wrapper, which forwards to the same pnpm:
-#    dsh plugin --profile web add file:$HOME/dsh-workspace/worktree-lifecycle
+#    dsh plugin --profile web add file:/home/satont/Documents/deepseek-harness/default-workspace/worktree-lifecycle
 
 # 3. append the package name to dsh.profile.bundles in profile package.json
 #    (next to "@hualiong/dsh-session-delete"):
@@ -43,7 +44,7 @@ pnpm add file:$HOME/dsh-workspace/worktree-lifecycle
 ```jsonc
 {
   "dsh": { "profile": { "bundles": [ /* … */ "@hualiong/dsh-session-delete", "dsh-worktree-lifecycle" ] } },
-  "dependencies": { "dsh-worktree-lifecycle": "file:$HOME/dsh-workspace/worktree-lifecycle" }
+  "dependencies": { "dsh-worktree-lifecycle": "file:/home/satont/Documents/deepseek-harness/default-workspace/worktree-lifecycle" }
 }
 ```
 
@@ -81,7 +82,7 @@ profile changes are not hot-applied to a running server). The plugin logs one
 | key | default | meaning |
 | --- | --- | --- |
 | `enabled` | `true` | master switch |
-| `cascadeDelete` | `true` | remove the worktree + `dsh-*` branch on Session delete |
+| `cascadeDelete` | `true` | remove the worktree on Session delete; delete its `dsh-*` branch, preserve a renamed user branch |
 | `runCreateHook` | `true` | run the project create hook |
 | `hookTimeoutMs` | `300000` | per hook command timeout |
 | `gitTimeoutMs` | `120000` | per Git maintenance command timeout |
@@ -112,7 +113,7 @@ The hook runs **inside the new worktree** (`cwd = worktree path`) with:
 | env | value |
 | --- | --- |
 | `WORKTREE_PATH` | absolute worktree checkout |
-| `WORKTREE_BRANCH` | checked-out `dsh-*` branch |
+| `WORKTREE_BRANCH` | checked-out branch (may be a renamed user branch) |
 | `WORKTREE_REPO` | main repository root (owner of `.git/worktrees/`) |
 | `SESSION_ID` | the Session id |
 
@@ -237,7 +238,7 @@ removed by the cascade.
 Engine tests (real Git repositories under a throwaway `/tmp` directory):
 
 ```bash
-cd $HOME/dsh-workspace/worktree-lifecycle
+cd /home/satont/Documents/deepseek-harness/default-workspace/worktree-lifecycle
 npm run build
 npm test        # node --test test/
 ```

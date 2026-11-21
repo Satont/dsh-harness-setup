@@ -220,7 +220,7 @@ The static host must serve files with a sandbox CSP and no cookies; see
 - [ ] New chat answers a trivial prompt; model route is **codex**, not legacy `openai-codex`
 - [ ] `dsh-better-sidebar` side card opens; `dsh-context` dashboard opens
 - [ ] Whale-girl (RU) is visible, speaks Russian, and opens its menu
-- [ ] Worktree checkbox creates a worktree and branch; deleting that session removes both
+- [ ] Worktree checkbox creates a worktree and branch; deleting that session removes the worktree and a `dsh-*` branch. If the branch was renamed, the worktree is removed and the renamed branch is preserved.
 - [ ] GitLab/GitHub forge panel sees the repo; `gh auth status` / `glab auth status` are clean
 - [ ] `dsh-share` publishes a page; `curl -I` shows sandbox CSP; revoke works
 - [ ] Phone route: HTTPS URL loads; Basic-Auth + launch token work; `dsh-mobile --doctor` = 303

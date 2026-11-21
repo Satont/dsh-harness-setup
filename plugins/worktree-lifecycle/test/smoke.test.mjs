@@ -118,6 +118,54 @@ test('classifyWorktree rejects manual checkouts and misplaced dsh branches', () 
   assert.equal(classifyWorktree(forged), null)
 })
 
+test('classifyWorktree accepts a renamed branch in a dsh-* pool directory', () => {
+  const repo = makeRepo('renamed-classify')
+  const worktree = addWorktree(repo, 'feature/renamed', 'dsh-aaaa0000-bbbb')
+  const info = classifyWorktree(worktree)
+  assert.ok(info, 'dsh-* directory name proves DSH ownership after a branch rename')
+  assert.equal(info.branch, 'feature/renamed')
+  assert.equal(canonical(info.mainRepo), canonical(repo))
+})
+
+test('cleanupWorktree removes a renamed-branch worktree but preserves the user branch', async () => {
+  const repo = makeRepo('renamed-cleanup')
+  const worktree = addWorktree(repo, 'feature/renamed-keep', 'dsh-bbbb1111-cccc')
+  fs.writeFileSync(path.join(worktree, 'dirty.txt'), 'uncommitted\n')
+  const info = classifyWorktree(worktree)
+
+  const result = await cleanupWorktree({
+    target: { path: worktree, repo: info.mainRepo, branch: info.branch },
+    run: nodeRun,
+  })
+
+  assert.equal(result.skipped, false)
+  assert.equal(result.removedWorktree, true)
+  assert.equal(result.removedBranch, false)
+  assert.equal(fs.existsSync(worktree), false, 'worktree directory removed')
+  const branches = sh(repo, ['git', 'branch', '--format=%(refname:short)']).stdout
+  assert.ok(branches.includes('feature/renamed-keep'), 'renamed user branch kept')
+  assert.ok(result.reasons.some((line) => line.includes('preserved')), 'reason recorded')
+})
+
+test('cleanupWorktree handles a branch renamed after tracking', async () => {
+  const repo = makeRepo('renamed-after')
+  const worktree = addWorktree(repo, 'dsh-cccc2222-dddd')
+  const info = classifyWorktree(worktree)
+  sh(worktree, ['git', 'branch', '-m', 'feature/renamed-later'])
+
+  const result = await cleanupWorktree({
+    target: { path: worktree, repo: info.mainRepo, branch: info.branch },
+    run: nodeRun,
+  })
+
+  assert.equal(result.skipped, false)
+  assert.equal(result.removedWorktree, true)
+  assert.equal(result.removedBranch, false)
+  assert.equal(fs.existsSync(worktree), false)
+  const branches = sh(repo, ['git', 'branch', '--format=%(refname:short)']).stdout
+  assert.ok(branches.includes('feature/renamed-later'), 'renamed branch preserved')
+})
+
 test('cleanupWorktree removes only the DSH worktree and its dsh-* branch', async () => {
   const repo = makeRepo('cleanup')
   const keepSource = fs.readFileSync(path.join(repo, 'README.md'), 'utf8')

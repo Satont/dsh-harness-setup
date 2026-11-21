@@ -1,6 +1,6 @@
 {
   "name": "dsh-worktree-lifecycle",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "DSH host plugin: cascade-removes DSH-created Git worktrees and their dsh-* branches when a Session is deleted, and runs a per-project create hook once when a Session starts inside such a worktree.",
   "type": "module",
