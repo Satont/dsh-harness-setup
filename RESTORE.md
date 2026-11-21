@@ -247,3 +247,23 @@ The static host must serve files with a sandbox CSP and no cookies; see
 - **VPS 502** — home DSH desktop server is down or the relay cannot reach the Tailscale IP.
 - **Phone loops on Basic-Auth** — check `vps.conf` values; use an incognito tab; ensure the
   relay container is running.
+
+## 4.3 Google Antigravity ACP (Gemini 4 Neon)
+
+The profile installs `dsh-bundle-antigravity-host@0.1.46`, which drives the official
+Antigravity ACP server over stdio; tools stay in DSH. **Reload/restart DSH after install** —
+a browser refresh alone does not load the new host bundle.
+
+1. Open **Settings → Antigravity ACP**.
+2. On first open the plugin downloads the official Antigravity ACP server (~300 MB) from
+   `dl.google.com`; wait for **Preparing binary** to finish.
+3. Click **Connect / Login ACP**. If a local `agy` login already exists, it is imported;
+   otherwise complete the Google OAuth flow in the browser. The account needs Antigravity
+   access. No `agy` CLI is required for normal use.
+4. Wait until the model catalog loads. In the composer model picker choose
+   **Antigravity (ACP) → Gemini 4 Neon** (Hydrogen/Argon are the other families).
+5. Leave **Use proxy mode** off unless you explicitly want the direct upstream proxy route.
+6. Reasoning effort is sent as the official `thought_level`; choose it in the DSH effort menu.
+
+If the binary download stalls, check **Advanced → egress proxy** and network access to
+`dl.google.com`. If OAuth opens in a browser, use the same machine running DSH.

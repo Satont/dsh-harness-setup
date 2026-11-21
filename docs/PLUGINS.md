@@ -31,6 +31,7 @@ unless noted. Local plugins are copied into the profile `plugins/` directory.
 | `dsh-context` | 0.85.1 | Context Insights dashboard/commands |
 | `dsh-plugin` | 2.3.9 | Settings → Plugin Hub (community marketplace) |
 | `whale-girl` | 0.4.0-ru.2 | Russian Whale-girl pet (chat/voice/news, MIT); GitHub `bondiano/whale-girl-ru` |
+| `dsh-bundle-antigravity-host` | 0.1.46 | Official Google Antigravity ACP agent; Gemini 4 Neon/Hydrogen, OAuth, quota pill |
 | `@local/dsh-usage-limits` | github:bondiano/dsh-usage-limits | Full **Limits** page in the left sidebar |
 | `dsh-plugin-subscriptions` extras | — | Provides the Codex quota pill used by the full Limits API |
 

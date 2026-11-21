@@ -28,7 +28,8 @@
         "dsh-whale-maid-mascot",
         "dsh-limits-strip",
         "dsh-voice-hex",
-        "dsh-agent-browser"
+        "dsh-agent-browser",
+        "dsh-bundle-antigravity-host"
       ]
     }
   },
@@ -52,6 +53,7 @@
     "dsh-worktree-lifecycle": "file:plugins/worktree-lifecycle",
     "dsh-voice-hex": "file:plugins/voice-hex",
     "dsh-agent-browser": "file:plugins/agent-browser",
-    "whale-girl": "github:bondiano/whale-girl-ru#8e9176e9fcf7b589a5787c94c95f43126d0dad3e"
+    "whale-girl": "github:bondiano/whale-girl-ru#8e9176e9fcf7b589a5787c94c95f43126d0dad3e",
+    "dsh-bundle-antigravity-host": "0.1.46"
   }
 }
