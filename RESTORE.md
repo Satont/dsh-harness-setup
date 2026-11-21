@@ -254,14 +254,18 @@ The profile installs `dsh-bundle-antigravity-host@0.1.46`, which drives the offi
 Antigravity ACP server over stdio; tools stay in DSH. **Reload/restart DSH after install** —
 a browser refresh alone does not load the new host bundle.
 
-1. Open **Settings → Antigravity ACP**.
-2. On first open the plugin downloads the official Antigravity ACP server (~300 MB) from
-   `dl.google.com`; wait for **Preparing binary** to finish.
-3. Click **Connect / Login ACP**. If a local `agy` login already exists, it is imported;
-   otherwise complete the Google OAuth flow in the browser. The account needs Antigravity
-   access. No `agy` CLI is required for normal use.
+1. Download the official Linux ACP zip from
+   `https://dl.google.com/agy-extensions/releases/linux/agy-acp-server-1.4.0-linux-x86_64.zip`,
+   unzip it, and keep `agy_acp_server.par` plus `localharness_external` together.
+2. Point `llm-antigravity-acp` at the extracted binary in `profile/cordis.patch.yml` and
+   set `autoDownload: false`. The automatic extractor rejects the current archive because
+   `agy_acp_server.par` is about 888 MB, above its 512 MiB single-entry cap.
+3. Open **Settings → Antigravity ACP** → **Connect / Login ACP**. Complete Google OAuth;
+   the account needs Antigravity access. Restart DSH after changing the host config.
 4. Wait until the model catalog loads. In the composer model picker choose
    **Antigravity (ACP) → Gemini 4 Neon** (Hydrogen/Argon are the other families).
+5. The subscriptions plugin is configured with `providers: [codex, claude, grok, copilot]`
+   so its competing `antigravity` provider does not appear.
 5. Leave **Use proxy mode** off unless you explicitly want the direct upstream proxy route.
 6. Reasoning effort is sent as the official `thought_level`; choose it in the DSH effort menu.
 
