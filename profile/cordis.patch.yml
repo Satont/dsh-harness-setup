@@ -274,6 +274,13 @@
               retainRatio: 0.2
               maxTokens: 32768
               auto: true
+              modelPolicies:
+                - provider: antigravity-acp
+                  model: gemini-4-neon
+                  thresholdRatio: 0.48828125
+                  headroomTokens: 32768
+                  retainRatio: 0.2
+                  maxTokens: 32768
           - id: command-compact
             name: '@deepseek-ai/dsh-command-compact'
           - id: tool-result-pruner
