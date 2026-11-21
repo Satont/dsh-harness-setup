@@ -333,6 +333,19 @@
 - id: llm-subscriptions
   config:
     codexClientVersion: "0.167.2"
+    providers:
+      - codex
+      - claude
+      - grok
+      - copilot
+
+# ── Antigravity ACP: official agent; manual binary avoids the 512 MiB extract cap
+- id: llm-antigravity-acp
+  config:
+    binaryPath: /home/satont/.cache/dsh-antigravity-host/manual/agy_acp_server.par
+    autoDownload: false
+    proxyMode: false
+    cliQuotaEnabled: true
 
 # ── Voice input: local Hex models (Whisper large-v3-turbo etc.) ──────────────
 - id: speech-to-text
