@@ -345,6 +345,7 @@
       - claude
       - grok
       - copilot
+      - antigravity
 
 # ── Antigravity ACP: official agent; manual binary avoids the 512 MiB extract cap
 - id: llm-antigravity-acp
