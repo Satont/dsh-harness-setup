@@ -27,7 +27,7 @@ unless noted. Local plugins are copied into the profile `plugins/` directory.
 | `@kyf-eng/dsh-threads` | 0.2.0 | Projects/threads |
 | `dsh-project-mcp` | 0.4.3 | Per-project MCP from `.dsh/mcp.json` |
 | `@dungsil/dsh-plugin-forge-gitlab` | 0.1.1 | GitLab MR/checks/diff panel |
-| `dsh-better-sidebar` | 0.32.0 | Side card: files/editor/changes/tasks/chat. **0.32.1 requires DSH 0.2.2-rc.2** |
+| `dsh-better-sidebar` | 0.32.1 | Side card: files/editor/changes/tasks/chat (DSH 0.2.3-alpha.2). |
 | `dsh-context` | 0.85.1 | Context Insights dashboard/commands |
 | `dsh-plugin` | 2.3.9 | Settings → Plugin Hub (community marketplace) |
 | `whale-girl` | 0.4.0-ru.2 | Russian Whale-girl pet (chat/voice/news, MIT); GitHub `bondiano/whale-girl-ru` |
@@ -57,8 +57,8 @@ Add each package name to `dsh.profile.bundles` (the restore profile already does
 
 ## Compatibility notes
 
-- The snapshot runs on DSH `0.2.2-rc.1`. Do not update all packages at once.
-- `dsh-better-sidebar` 0.32.1 requires `@deepseek-ai/*` `^0.2.2-rc.2`; 0.32.0 is the last
+- The snapshot runs on DSH `0.2.3-alpha.2` / Node `26.13.1`. Do not update all packages at once.
+- `dsh-better-sidebar` 0.32.1 is used with DSH `0.2.3-alpha.2`;
   version compatible with rc.1.
 - `dsh-plugin-subscriptions` defaults to Codex client version `0.153.4`, which hides GPT-6.1
   and 6.2. The profile overrides `codexClientVersion: "0.167.2"`.

@@ -6,9 +6,9 @@ the profile has 18 bundles, local `file:` plugins, and several client add-ons.
 ## 0. Prerequisites
 
 - Linux with a graphical session (Arch/Omarchy recommended; the desktop wrapper is Linux-only)
-- Node.js 22.19+ or 24+ (this backup used Node 26.9)
+- Node.js `26.13.1` (required by DSH 0.2.3-alpha.2)
 - `pnpm` 12.x
-- DeepSeek Harness CLI on `PATH` (`dsh --version`; this backup used `0.2.2-rc.1`)
+- DeepSeek Harness CLI on `PATH` (`dsh --version`; this backup used `0.2.3-alpha.2`)
 - `git`, `gh` (for GitHub forge), `glab` (for GitLab forge), `tailscale` (mobile route)
 - Optional: Docker + Traefik on a VPS for public mobile access; nginx/static host for artifacts
 - Chromium/Helium and Playwright cache only if you keep the Playwright MCP row
@@ -16,7 +16,7 @@ the profile has 18 bundles, local `file:` plugins, and several client add-ons.
 Install DSH if it is missing:
 
 ```bash
-npm install -g @deepseek-ai/dsh@0.2.2-rc.1
+npm install -g @deepseek-ai/dsh@0.2.3-alpha.2
 dsh --version
 ```
 
@@ -53,7 +53,7 @@ The script:
 4. runs `pnpm install` with the profile's `autoInstallPeers: false` setting.
 
 Do not run `pnpm update` or install latest versions: the versions in `profile/package.json`
-are known to load on DSH `0.2.2-rc.1`.
+are known to load on DSH `0.2.3-alpha.2`. Note: the npm `0.2.3-alpha.1` package has a broken Cordis loader dependency; use `alpha.2`.
 
 ## 3. Start and verify the harness
 
@@ -228,7 +228,7 @@ The static host must serve files with a sandbox CSP and no cookies; see
 
 ## 10. Upgrading later
 
-- DSH `0.2.2-rc.2`/`rc.3` unlocks newer plugin versions (e.g. `dsh-better-sidebar 0.32.1`,
+- DSH `0.2.3-alpha.2` unlocks `dsh-better-sidebar 0.32.1`;
   `@linxin666/dsh-usage`), but can break pinned bundles. Upgrade on a **copy** of the
   profile, verify, then switch the live one.
 - Re-check `codexClientVersion` after upgrading `dsh-plugin-subscriptions`: newer versions

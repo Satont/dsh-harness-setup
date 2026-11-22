@@ -20,9 +20,9 @@ copy.
 4. **Work on a scratch `DSH_HOME` first.** Restore into `/tmp/dsh-restore` or another empty
    home, boot it on a spare port, and verify the plugin rows before touching the live
    profile.
-5. **Respect versions.** This setup was taken on DSH `0.2.2-rc.1`. Some plugins need newer
+5. **Respect versions.** This setup was taken on DSH `0.2.3-alpha.2` (Node `26.13.1`). Some plugins need newer
    runtimes; do not blindly install latest versions. The profile pins known-good versions.
-   `dsh-better-sidebar` is pinned to `0.32.0` because `0.32.1` requires DSH `0.2.2-rc.2`.
+   `dsh-better-sidebar` is now `0.32.1` on DSH `0.2.3-alpha.2`. `@kyf-eng/dsh-threads` is a local patched fork (`plugins/dsh-threads-alpha2`) for the alpha.2 client API.
 6. **Secrets are provisioned interactively, never copied from git.** Codex/ChatGPT auth is
    created via Settings → Subscriptions; GitLab via `glab auth login`; VPS values via the
    owner's password manager or `.env` outside the repo.

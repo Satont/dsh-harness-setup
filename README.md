@@ -12,8 +12,8 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 
 ## Status this backup was taken from
 
-- DSH runtime: `0.2.2-rc.1` (web profile)
-- OS: Linux (Arch), Wayland, Node.js 26.x
+- DSH runtime: `0.2.3-alpha.2` (web profile, Node `26.13.1`)
+- OS: Linux (Arch), Wayland, Node.js `26.13.1`
 - Profile: `~/.dsh/profiles/web`
 - UI: `dsh-claude-ui` (local CSS/client plugin)
 - Main model: Codex subscription route `codex`, default `GPT-6.2-Sol`, medium effort
