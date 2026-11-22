@@ -80,19 +80,6 @@
   name: "@deepseek-ai/dsh-client-ui-sidebar-browser"
   disabled: false
 
-# ── GitLab forge provider ───────────────────────────────────────────────────
-# Merge-request panel (status/checks/diff/merge) for GitLab, read through the
-# host glab CLI. The token lives in glab's own keyring, never in this file.
-# gitlab.com is listed but stays "unauthenticated" until:
-#   glab auth login --hostname gitlab.com
-- id: dungsil-forge-gitlab
-  name: "@dungsil/dsh-plugin-forge-gitlab"
-  config:
-    glabCommand: glab
-    hosts: [ gitlab.example.com, gitlab.com ]
-    timeoutMs: 30000
-    maxOutputBytes: 8388608
-
 # ── Model-callable browser (Playwright MCP) ─────────────────────────────────
 # Adds mcp__playwright__* tools (25 schemas): navigate, click, type, screenshot,
 # evaluate. Chromium is taken from the Playwright cache because the system
