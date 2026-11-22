@@ -11,7 +11,6 @@
         "@deepseek-ai/dsh-experimental-forge-bundle",
         "@deepseek-ai/dsh-experimental-plugin-market-bundle",
         "@deepseek-ai/dsh-experimental-session-search",
-        "@dungsil/dsh-plugin-forge-gitlab",
         "@kyf-eng/dsh-threads",
         "dsh-plugin-memory",
         "dsh-notification-hook",
@@ -34,12 +33,11 @@
     }
   },
   "dependencies": {
-    "@dungsil/dsh-plugin-forge-gitlab": "0.1.1",
     "@hualiong/dsh-session-delete": "0.4.3",
-    "@kyf-eng/dsh-threads": "0.2.0",
+    "@kyf-eng/dsh-threads": "file:plugins/dsh-threads-alpha2",
     "@local/dsh-usage-limits": "github:bondiano/dsh-usage-limits#ecc6e93ba4b4b93ae63f31085a68a1585e0397aa",
     "dsh-artifact": "0.8.1",
-    "dsh-better-sidebar": "0.32.0",
+    "dsh-better-sidebar": "0.32.1",
     "dsh-claude-ui": "file:plugins/dsh-claude-ui",
     "dsh-context": "0.85.1",
     "dsh-inline-bash": "file:plugins/inline-bash",
