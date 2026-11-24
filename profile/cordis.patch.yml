@@ -11,54 +11,110 @@
     providers:
       opencode-go:
         apiKeyEnv: OPENCODE_GO_API_KEY
-      # Legacy ChatGPT/Codex fallback (pi-ai openai-codex route).
-      # The primary route is now dsh-plugin-subscriptions (`codex`) configured
-      # in profile/cordis.patch.yml below; this list remains as a fallback.
       openai-codex:
         reasoning: low
         models:
-          - {
-              id: gpt-6-astra,
-              contextWindow: 272000,
-              maxTokens: 32768,
-              reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
-            }
-          - {
-              id: gpt-6.1-sol,
-              contextWindow: 500000,
-              maxTokens: 32768,
-              reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
-            }
-          - {
-              id: gpt-6-sol,
-              contextWindow: 272000,
-              maxTokens: 32768,
-              reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
-            }
-          - {
-              id: gpt-6-luna,
-              contextWindow: 272000,
-              maxTokens: 32768,
-              reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
-            }
-          - {
-              id: gpt-5.6-sol,
-              contextWindow: 272000,
-              maxTokens: 32768,
-              reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
-            }
-          - {
-              id: gpt-5.6-terra,
-              contextWindow: 272000,
-              maxTokens: 32768,
-              reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
-            }
-          - {
-              id: gpt-5.6-luna,
-              contextWindow: 272000,
-              maxTokens: 32768,
-              reasoningEfforts: { low: low, medium: medium, high: high, xhigh: xhigh }
-            }
+          - id: gpt-6-astra
+            contextWindow: 272000
+            maxTokens: 32768
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+          - id: gpt-6.1-sol
+            contextWindow: 500000
+            maxTokens: 32768
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+          - id: gpt-6-sol
+            contextWindow: 272000
+            maxTokens: 32768
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+          - id: gpt-6-luna
+            contextWindow: 272000
+            maxTokens: 32768
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+          - id: gpt-5.6-sol
+            contextWindow: 272000
+            maxTokens: 32768
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+          - id: gpt-5.6-terra
+            contextWindow: 272000
+            maxTokens: 32768
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+          - id: gpt-5.6-luna
+            contextWindow: 272000
+            maxTokens: 32768
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+      kimi-coding:
+        apiKeyEnv: KIMI_CODING_API_KEY
+        models:
+          - id: k3
+            name: Kimi K3
+            contextWindow: 1048576
+            maxTokens: 131072
+            input:
+              - text
+              - image
+          - id: k3-256k
+            name: Kimi K3-256K
+            contextWindow: 262144
+            maxTokens: 131072
+            input:
+              - text
+              - image
+          - id: k3.1-pro
+            name: Kimi K3.1 Pro
+            contextWindow: 500000
+            maxTokens: 32768
+            input:
+              - text
+              - image
+          - id: k3.1-pro-highspeed
+            name: Kimi K3.1 Pro Highspeed
+            contextWindow: 1048576
+            maxTokens: 131072
+            input:
+              - text
+              - image
+          - id: kimi-for-coding
+            name: kimi-for-coding
+            contextWindow: 1048576
+            maxTokens: 32768
+            input:
+              - text
+              - image
+          - id: kimi-for-coding-highspeed
+            name: Kimi For Coding HighSpeed
+            contextWindow: 262144
+            maxTokens: 32768
+            input:
+              - text
+              - image
 - id: session-log-deepseek
   name: "@deepseek-ai/dsh-session-log-deepseek"
   config:
@@ -80,6 +136,11 @@
   name: "@deepseek-ai/dsh-client-ui-sidebar-browser"
   disabled: false
 
+# ── GitLab forge provider ───────────────────────────────────────────────────
+# Merge-request panel (status/checks/diff/merge) for GitLab, read through the
+# host glab CLI. The token lives in glab's own keyring, never in this file.
+# gitlab.com is listed but stays "unauthenticated" until:
+#   glab auth login --hostname gitlab.com
 # ── Model-callable browser (Playwright MCP) ─────────────────────────────────
 # Adds mcp__playwright__* tools (25 schemas): navigate, click, type, screenshot,
 # evaluate. Chromium is taken from the Playwright cache because the system
@@ -97,8 +158,9 @@
           - "--headless"
           - "--isolated"
           - "--executable-path"
-          - "/home/YOUR_USER/.cache/ms-playwright/chromium-1208/chrome-linux64/chr\
-            ome"
+          # Machine-specific: point at the Chromium that `npx playwright install chromium`
+          # placed under your home. Comment the whole pair out to let MCP use its default.
+          - "/home/<user>/.cache/ms-playwright/chromium-1208/chrome-linux64/chrome"
           - "--viewport-size"
           - "1280x720"
           - "--output-dir"
@@ -145,12 +207,6 @@
         transport: streamable-http
         url: https://mcp.grep.app
         toolCallTimeoutMs: 60000
-- id: agent-default-model
-  name: "@deepseek-ai/dsh-agent-default-model"
-  config:
-    provider: codex
-    model: gpt-6.2-sol
-    reasoningEffort: medium
 
 # ── Inline local bash: type !cmd + Enter, no model turn ─────────────────────
 - insert:
@@ -189,42 +245,42 @@
     order: 1
     plugins:
       - id: persona
-        name: '@deepseek-ai/dsh-persona'
+        name: "@deepseek-ai/dsh-persona"
         config:
           prefix: You are a coding agent powered by the {{model}} model.
       - id: agent-instructions
-        name: '@deepseek-ai/dsh-agent-instructions'
+        name: "@deepseek-ai/dsh-agent-instructions"
         config:
           maxBytes: 65536
       - id: time-context
-        name: '@deepseek-ai/dsh-time-context'
+        name: "@deepseek-ai/dsh-time-context"
       - id: tool-bash
-        name: '@deepseek-ai/dsh-tool-bash'
+        name: "@deepseek-ai/dsh-tool-bash"
         disabled: !!js process.platform === 'win32'
       - id: tool-pwsh
-        name: '@deepseek-ai/dsh-tool-pwsh'
+        name: "@deepseek-ai/dsh-tool-pwsh"
         disabled: !!js process.platform !== 'win32'
       - id: tool-fs
-        name: '@deepseek-ai/dsh-tool-fs'
+        name: "@deepseek-ai/dsh-tool-fs"
         config:
           # Set false to drop the apply_patch tool beside edit.
           applyPatch: false
       - id: tool-fs-search
-        name: '@deepseek-ai/dsh-tool-fs-search'
+        name: "@deepseek-ai/dsh-tool-fs-search"
         config:
           sampleOverCapGlobResults: false
       - id: tool-jobs
-        name: '@deepseek-ai/dsh-tool-jobs'
+        name: "@deepseek-ai/dsh-tool-jobs"
       - id: tool-schedule
-        name: '@deepseek-ai/dsh-tool-schedule'
+        name: "@deepseek-ai/dsh-tool-schedule"
       - id: skill-filesystem
-        name: '@deepseek-ai/dsh-skill-filesystem'
+        name: "@deepseek-ai/dsh-skill-filesystem"
       - id: tool-skill
-        name: '@deepseek-ai/dsh-tool-skill'
+        name: "@deepseek-ai/dsh-tool-skill"
       - id: command-goal
-        name: '@deepseek-ai/dsh-command-goal'
+        name: "@deepseek-ai/dsh-command-goal"
       - id: tool-goal
-        name: '@deepseek-ai/dsh-tool-goal'
+        name: "@deepseek-ai/dsh-tool-goal"
       - id: planning
         name: cordis:group
         group: true
@@ -232,7 +288,7 @@
           planMode: true
         config:
           - id: plan-mode
-            name: '@deepseek-ai/dsh-plan-mode'
+            name: "@deepseek-ai/dsh-plan-mode"
             config:
               section: |
                 You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
@@ -254,13 +310,16 @@
           toolResultPruner: true
         config:
           - id: compaction-basic
-            name: '@deepseek-ai/dsh-compaction-basic'
+            name: "@deepseek-ai/dsh-compaction-basic"
             config:
               thresholdRatio: 0.8
               headroomTokens: 32768
               retainRatio: 0.2
               maxTokens: 32768
               auto: true
+              # Gemini 4 Neon on ACP reports ~1M context. 0.48828125 makes the
+              # pressure trigger ~500k tokens, with the same 32k headroom and
+              # 20% retention used by the GPT policy.
               modelPolicies:
                 - provider: antigravity-acp
                   model: gemini-4-neon
@@ -269,9 +328,9 @@
                   retainRatio: 0.2
                   maxTokens: 32768
           - id: command-compact
-            name: '@deepseek-ai/dsh-command-compact'
+            name: "@deepseek-ai/dsh-command-compact"
           - id: tool-result-pruner
-            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            name: "@deepseek-ai/dsh-compaction-tool-result-pruner"
             config:
               thresholdChars: 8192
               headChars: 4096
@@ -283,43 +342,43 @@
           workflowEngine: true
         config:
           - id: tool-subagent-control
-            name: '@deepseek-ai/dsh-tool-subagent-control'
+            name: "@deepseek-ai/dsh-tool-subagent-control"
           - id: tool-subagent
-            name: '@deepseek-ai/dsh-tool-subagent'
+            name: "@deepseek-ai/dsh-tool-subagent"
             config:
               provider: spawn
               toolName: subagent
               modelSelection: true
               modelDiscovery: true
           - id: tool-subagent-fork
-            name: '@deepseek-ai/dsh-tool-subagent'
+            name: "@deepseek-ai/dsh-tool-subagent"
             config:
               provider: fork
               toolName: subagent_fork
           - id: workflow-ptc
-            name: '@deepseek-ai/dsh-workflow-ptc'
+            name: "@deepseek-ai/dsh-workflow-ptc"
             config:
               provider: spawn
           - id: tool-workflow
-            name: '@deepseek-ai/dsh-tool-workflow'
+            name: "@deepseek-ai/dsh-tool-workflow"
       - id: tool-ask-user
-        name: '@deepseek-ai/dsh-tool-ask-user'
+        name: "@deepseek-ai/dsh-tool-ask-user"
       - id: tool-todo
-        name: '@deepseek-ai/dsh-tool-todo'
+        name: "@deepseek-ai/dsh-tool-todo"
         config:
           allowParallelInProgress: true
       - id: tool-web
-        name: '@deepseek-ai/dsh-tool-web'
+        name: "@deepseek-ai/dsh-tool-web"
         config:
           fetch: true
           searchTimeoutMs: 60000
       - id: present
-        name: '@deepseek-ai/dsh-tool-present'
+        name: "@deepseek-ai/dsh-tool-present"
       - id: tool-plugin-manager
-        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        name: "@deepseek-ai/dsh-plugin-manager/tools"
         disabled: !!js "!ctx.get('profileContext')"
       - id: tool-plugin-market
-        name: '@deepseek-ai/dsh-plugin-market/tools'
+        name: "@deepseek-ai/dsh-plugin-market/tools"
         disabled: true
 # <<< model-tuning:standard-preset
 
@@ -327,3 +386,102 @@
 - id: llm-subscriptions
   config:
     codexClientVersion: "0.167.2"
+    # No providers whitelist: every subscriptions provider (including
+    # Antigravity) is registered so accounts can be added normally.
+
+    # ── Antigravity ACP: official agent, manual binary (auto-download >512MiB bug)
+- id: llm-antigravity-acp
+  config:
+    # Unpack the official ACP server once and point here (see docs/PLUGINS.md / RESTORE.md):
+    # binaryPath: /home/<user>/.cache/dsh-antigravity-host/manual/agy_acp_server.par
+    autoDownload: false
+    modelOverrides:
+      claude-opus-5-5:
+        effort: high
+      gemini-3.8-flash:
+        enabled: false
+      gemini-4-neon:
+        effort: high
+      gemini-pro-orchestrator:
+        enabled: false
+      gemini-pro-orchestrator-argon:
+        enabled: false
+      gemini-pro-orchestrator-neon:
+        enabled: false
+      claude-sonnet-5-5:
+        enabled: false
+    reuseSessions: true
+    proxyMode: false
+    cliQuotaEnabled: true
+
+# ── Voice input: use local Hex models (Whisper large-v3-turbo etc.) ───────────
+- id: speech-to-text
+  config:
+    defaultProvider: hex-whisper-large-v3-turbo
+    language: ru
+
+# ── Default sandbox/approval: full access for every new session ──────────────
+- id: sandbox-policy
+  config:
+    mode: danger-full-access
+    workspaceRoot: !!js process.cwd()
+- id: approval
+  config:
+    policy: never
+- id: permission
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+    defaultPreset: danger-full-access
+- id: ui-chat
+  name: "@deepseek-ai/dsh-client-ui-chat"
+  config:
+    transcriptView: standard
+    linkOpening: new-tab
+
+# ── Agent browser: live viewport inside DSH, human takeover enabled ───────────
+- id: browser
+  config:
+    autoOpenPanel: true
+    idleTimeoutMinutes: 31
+    headed: false
+    allowTakeover: true
+    allowEval: false
+    cookiesRedacted: true
+- id: whale-girl
+  name: whale-girl
+  config:
+    voice:
+      enabled: true
+      provider: subscription
+    news:
+      feeds:
+        - https://habr.com/ru/rss/news/?fl=ru
+    sessionMemory: true
+    size: 160
+- id: subagent-model-selection-settings
+  name: "@deepseek-ai/dsh-tool-subagent/model-selection-settings"
+  config:
+    enabled: true
+    allowedModels:
+      - provider: kimi-coding
+        model: k3
+      - provider: kimi-coding
+        model: k3.1-pro
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: opencode-go
+    model: deepseek-v4.1-flash
+- id: better-sidebar
+  name: dsh-better-sidebar
+  config:
+    agentOpenTools: true

@@ -1243,3 +1243,200 @@ button {
 [data-slot="sidebar.brand.mark"] {
   color: var(--claude-clay);
 }
+
+/* ============================================================================
+   Sidebar composition (see src/behavior.js)
+
+   The shell mounts the Workspaces region inside the scroll area and the account
+   chip under the footer. The behaviour half moves the workspace region into the
+   footer and removes the account chip; this block styles the result.
+   ========================================================================= */
+
+/* Account chip — removed entirely, settings moved to the header gear. */
+.hHd-Xa_settingsArea {
+  display: none !important;
+}
+
+/* Threads "Projects" block: the shell's grid gives it an 8px row, so its header
+   painted over the panel list. Removed from the sidebar. */
+.dsht-side {
+  display: none !important;
+}
+
+/* Footer stack: Limits card → profile chips → Workspaces list. */
+/* Limits card sits above the profile chips inside the footer action slot. */
+[data-slot="sidebar.footer.action"] > .dsh-limits-card {
+  margin-bottom: 10px;
+}
+
+/* Header gear, immediately left of the collapse toggle. */
+.dsh-claude-gear {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  margin-inline-end: 2px;
+  border: 0;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: var(--claude-text-tertiary, #a9a49a);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+@media (hover: hover) {
+  .dsh-claude-gear:hover {
+    background: var(--claude-hover, rgba(245, 244, 239, 0.06));
+    color: var(--claude-text, #f5f4ef);
+  }
+}
+
+.dsh-claude-gear:focus-visible {
+  outline: 2px solid var(--claude-clay, #d97757);
+  outline-offset: 1px;
+}
+
+.dsh-claude-gear svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+/* Collapsed rail: the Limits card cannot fit a 50px column. */
+.hHd-Xa_collapsed .dsh-limits-card {
+  display: none !important;
+}
+
+.hHd-Xa_collapsed [data-slot="sidebar.footer.action"] {
+  justify-content: center;
+}
+
+/* The 50px rail has no room for the gear; expanding the sidebar reveals it. */
+.hHd-Xa_collapsed .dsh-claude-gear {
+  display: none !important;
+}
+
+/* ============================================================================
+   Workspace icons (see src/behavior.js)
+
+   The folder slot becomes a button that swaps the default folder SVG for a
+   chosen glyph; the picker is a small floating panel.
+   ========================================================================= */
+
+[data-row-key^="workspace:"] .YDXeBa_slot.YDXeBa_folder {
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+[data-row-key^="workspace:"] .YDXeBa_slot.YDXeBa_folder:hover {
+  background: var(--claude-hover, rgba(245, 244, 239, 0.08));
+}
+
+.YDXeBa_slot.YDXeBa_folder[data-dsh-custom-icon] > svg {
+  display: none;
+}
+
+.dsh-ws-glyph {
+  display: block;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+  filter: saturate(0.92);
+}
+
+.dsh-icon-picker {
+  position: fixed;
+  z-index: 1200;
+  width: 232px;
+  padding: 8px;
+  border: 1px solid var(--claude-border-3, rgba(245, 244, 239, 0.2));
+  border-radius: 12px;
+  background: var(--claude-menu-bg, #2b2a27f2);
+  box-shadow: var(--claude-shadow-menu, 0 16px 48px rgba(0, 0, 0, 0.5));
+  backdrop-filter: blur(8px);
+}
+
+.dsh-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+
+.dsh-icon-choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .dsh-icon-choice:hover {
+    background: var(--claude-hover-strong, rgba(245, 244, 239, 0.1));
+  }
+}
+
+.dsh-icon-reset {
+  margin-top: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--claude-text-caption, #87837b);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .dsh-icon-reset:hover {
+    background: var(--claude-hover, rgba(245, 244, 239, 0.06));
+    color: var(--claude-text-secondary, #d6d2c7);
+  }
+}
+
+.dsh-ws-img {
+  display: block;
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  border-radius: 3px;
+}
+
+.dsh-icon-upload {
+  display: block;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px dashed var(--claude-border-3, rgba(245, 244, 239, 0.2));
+  border-radius: 7px;
+  color: var(--claude-text-secondary, #d6d2c7);
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .dsh-icon-upload:hover {
+    background: var(--claude-hover, rgba(245, 244, 239, 0.06));
+    border-color: var(--claude-border-4, rgba(245, 244, 239, 0.28));
+  }
+}
+
+.dsh-icon-error {
+  margin-top: 6px;
+  color: #e08a6c;
+  font-size: 11px;
+  line-height: 1.35;
+}

@@ -15,11 +15,14 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 - DSH runtime: `0.2.3-alpha.2` (web profile, Node `26.13.1`)
 - OS: Linux (Arch), Wayland, Node.js `26.13.1`
 - Profile: `~/.dsh/profiles/web`
-- UI: `dsh-claude-ui` (local CSS/client plugin)
+- UI: `dsh-claude-ui` (local theme + sidebar composition plugin) — workspaces under the
+  panel list, Limits card and workspace-profile chips pinned at the bottom, header gear
+  for Settings, custom workspace icons (emoji or uploaded image) from the row `⋯` menu
 - Main model: Codex subscription route `codex`, default `GPT-6.2-Sol`, medium effort
 - Extra UI: `dsh-better-sidebar@0.32.0`, `dsh-context@0.85.1`,
   `dsh-plugin@2.3.9` (Plugin Hub), `@local/dsh-usage-limits` (Limits panel),
-  `dsh-limits-strip` (local sidebar card), `whale-girl` Russian pet
+  `dsh-limits-strip` (local sidebar card), `whale-girl` Russian pet,
+  `@local/dsh-workspace-profiles` (local, Zen-style workspace filter chips)
 - Voice: `dsh-voice-hex` with local Hex **Whisper large-v3-turbo**, default language `ru`
 - Browser: local `dsh-agent-browser` fork in `plugins/agent-browser` — `browser_*` tools for
   every model + live viewport docked in the right sidebar; per-chat page context; managed
@@ -46,6 +49,10 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 ## Screenshots
 
 ![Main UI](docs/screenshots/ui-dark.jpg)
+
+| Sidebar composition | Workspace icon menu |
+|---|---|
+| ![Sidebar](docs/screenshots/sidebar-workspaces.png) | ![Workspace icon](docs/screenshots/workspace-icon-menu.png) |
 
 | Limits page | Sidebar card |
 |---|---|

@@ -1,0 +1,9 @@
+# dsh-workspace-profiles bundle patch.
+#
+# The row mounts the Host half (the /workspace-profiles/config route that reads
+# and writes $DSH_HOME/workspace-profiles.json). The browser half is loaded from
+# the package's "dsh.client" entry and registers the sidebar switcher.
+- insert:
+    - id: workspace-profiles
+      name: '@local/dsh-workspace-profiles'
+      config: {}

@@ -50,6 +50,13 @@ const fontCss = [
 ].join("\n");
 
 const themeCss = read("src/theme.css").toString();
+// Behaviour half: DOM composition + the header gear. Kept as a plain module
+// with a single `export function apply(ctx)`; the loader wrapper below strips
+// the export keyword and wires apply onto the module exports.
+const behavior = read("src/behavior.js")
+  .toString()
+  .replace(/^export /gm, "")
+  .replace(/\r\n/g, "\n");
 const css = `${fontCss}\n${themeCss}`;
 
 // Inline the stylesheet inside a JS template literal: escape only what the
@@ -59,7 +66,7 @@ const escaped = css
   .replace(/`/g, "\\`")
   .replace(/\$\{/g, "\\${");
 
-const client = `window.__ModuleLoader__.load({
+const head = `window.__ModuleLoader__.load({
 \tid: "dsh-claude-ui",
 \tfactory: (require) => {
 \t\tvar module = { exports: {} };
@@ -72,12 +79,22 @@ const client = `window.__ModuleLoader__.load({
 \t\t\ttag.textContent = css;
 \t\t\tdocument.head.appendChild(tag);
 \t\t}
-\t\texports.inject = [];
-\t\texports.apply = function () {};
+`;
+
+const indentedBehavior = behavior
+  .split("\n")
+  .map((line) => (line.length > 0 ? "\t\t" + line : line))
+  .join("\n");
+
+const tail = `
+\t\texports.inject = ["slots"];
+\t\texports.apply = apply;
 \t\treturn module.exports;
 \t}
 });
 `;
+
+const client = head + indentedBehavior + tail;
 
 writeFileSync(join(root, "lib/client.js"), client);
 console.log(

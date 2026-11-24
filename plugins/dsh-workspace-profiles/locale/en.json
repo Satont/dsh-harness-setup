@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Workspace profiles",
+    "description": "A profile switcher at the sidebar foot: the Workspaces list shows only the workspaces of the active profile."
+  }
+}

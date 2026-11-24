@@ -158,6 +158,28 @@ If `browser_open` fails with `Chrome exited early`, run `agent-browser install` 
 point it at a broken `/usr/bin/chromium`). The profile sets `allowTakeover: true`; the tool
 still requires normal DSH permission for eval.
 
+## 4.4 Sidebar composition and workspace icons
+
+Two local plugins shape the left sidebar; both come from `plugins/` with the profile, no
+extra steps:
+
+- `dsh-claude-ui` (theme + `src/behavior.js`): keeps **Workspaces** under the panel list,
+  pins the Limits card and the workspace-profile chips to the bottom, removes the
+  “Signed in to DeepSeek” row, adds a **gear** next to the collapse button that opens
+  Settings, and hides the broken threads `Projects` block.
+- `@local/dsh-workspace-profiles`: profile chips (Все / Personal / Work) filter the
+  workspace list; configuration lives in `$DSH_HOME/workspace-profiles.json`.
+
+Workspace icons: hover a workspace row → `⋯` → **Иконка…** → pick an emoji or upload an
+image (PNG/JPG/WebP/GIF/SVG, rasters are downscaled to 64×64, 300 KB cap). The picker is
+served by the host half of `dsh-claude-ui` (`lib/index.js`): `GET/PUT /claude-ui/workspace-icons`
+writing `$DSH_HOME/workspace-icons.json`. The host half only loads with the DSH process —
+before a restart the browser keeps icons in `localStorage` and migrates them on the next load.
+
+Selectors in `src/behavior.js` use the shell's hashed classes (`.hHd-Xa_*`, `.YDXeBa_*`,
+`.ZyjtZG_*`); after a DSH upgrade re-check them if the composition or the menu entry stops
+applying.
+
 ## 5. Skills
 
 Global skills are not part of this repo. To recreate the design skill:
@@ -264,9 +286,12 @@ a browser refresh alone does not load the new host bundle.
    the account needs Antigravity access. Restart DSH after changing the host config.
 4. Wait until the model catalog loads. In the composer model picker choose
    **Antigravity (ACP) → Gemini 4 Neon** (Hydrogen/Argon are the other families).
-5. The subscriptions plugin is configured with `providers: [codex, claude, grok, copilot]`
-   so its competing `antigravity` provider does not appear.
-5. Leave **Use proxy mode** off unless you explicitly want the direct upstream proxy route.
+5. The ACP server serves **Gemini only**. Claude Opus/Sonnet ids that appear in the
+   **Antigravity (ACP)** group come from the local `agy models` CLI catalog; the ACP host
+   rejects them (`-32602 … not available for the current authentication method`).
+5. Leave **Use proxy mode** off. It (and the subscriptions `antigravity` provider) talks to
+   Cloud Code Assist from a third-party client with a spoofed `agy` user-agent, which Google
+   suspends under `403 TOS_VIOLATION` — the official ACP route above is the safe one.
 6. Reasoning effort is sent as the official `thought_level`; choose it in the DSH effort menu.
 
 If the binary download stalls, check **Advanced → egress proxy** and network access to

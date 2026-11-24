@@ -7,7 +7,6 @@
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
         "@deepseek-ai/dsh-experimental-voice-input-bundle",
-        "@deepseek-ai/dsh-experimental-agent-team-profile",
         "@deepseek-ai/dsh-experimental-forge-bundle",
         "@deepseek-ai/dsh-experimental-plugin-market-bundle",
         "@deepseek-ai/dsh-experimental-session-search",
@@ -24,34 +23,40 @@
         "dsh-plugin",
         "dsh-better-sidebar",
         "@local/dsh-usage-limits",
-        "dsh-whale-maid-mascot",
         "dsh-limits-strip",
         "dsh-voice-hex",
         "dsh-agent-browser",
-        "dsh-bundle-antigravity-host"
+        "whale-girl",
+        "dsh-impeccable-detector",
+        "dsh-bundle-antigravity-host",
+        "@michengai/dsh-btw",
+        "@local/dsh-workspace-profiles"
       ]
     }
   },
   "dependencies": {
     "@hualiong/dsh-session-delete": "0.4.3",
     "@kyf-eng/dsh-threads": "file:plugins/dsh-threads-alpha2",
-    "@local/dsh-usage-limits": "github:bondiano/dsh-usage-limits#ecc6e93ba4b4b93ae63f31085a68a1585e0397aa",
+    "@local/dsh-usage-limits": "github:bondiano/dsh-usage-limits",
+    "@local/dsh-workspace-profiles": "file:plugins/dsh-workspace-profiles",
+    "@michengai/dsh-btw": "1.4.2",
+    "dsh-agent-browser": "file:plugins/agent-browser",
     "dsh-artifact": "0.8.1",
     "dsh-better-sidebar": "0.32.1",
+    "dsh-bundle-antigravity-host": "0.1.46",
     "dsh-claude-ui": "file:plugins/dsh-claude-ui",
-    "dsh-context": "0.85.1",
+    "dsh-context": "^0.85.1",
+    "dsh-impeccable-detector": "file:plugins/impeccable",
     "dsh-inline-bash": "file:plugins/inline-bash",
     "dsh-limits-strip": "file:plugins/limits-strip",
     "dsh-notification-hook": "0.3.0",
-    "dsh-plugin": "2.3.9",
+    "dsh-plugin": "^2.3.9",
     "dsh-plugin-cost-usage": "0.1.0",
     "dsh-plugin-memory": "0.19.5",
     "dsh-plugin-subscriptions": "0.9.13",
     "dsh-project-mcp": "0.4.3",
-    "dsh-worktree-lifecycle": "file:plugins/worktree-lifecycle",
     "dsh-voice-hex": "file:plugins/voice-hex",
-    "dsh-agent-browser": "file:plugins/agent-browser",
-    "whale-girl": "github:bondiano/whale-girl-ru#8e9176e9fcf7b589a5787c94c95f43126d0dad3e",
-    "dsh-bundle-antigravity-host": "0.1.46"
+    "dsh-worktree-lifecycle": "file:plugins/worktree-lifecycle",
+    "whale-girl": "github:bondiano/whale-girl-ru#8e9176e9fcf7b589a5787c94c95f43126d0dad3e"
   }
 }
