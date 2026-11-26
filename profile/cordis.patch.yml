@@ -158,8 +158,8 @@
           - "--headless"
           - "--isolated"
           - "--executable-path"
-          # Machine-specific: point at the Chromium that `npx playwright install chromium`
-          # placed under your home. Comment the whole pair out to let MCP use its default.
+          # Machine-specific: the Chromium installed by `npx playwright install chromium`;
+          # comment the pair out to let the MCP server use its bundled browser.
           - "/home/<user>/.cache/ms-playwright/chromium-1208/chrome-linux64/chrome"
           - "--viewport-size"
           - "1280x720"
@@ -392,7 +392,7 @@
     # ── Antigravity ACP: official agent, manual binary (auto-download >512MiB bug)
 - id: llm-antigravity-acp
   config:
-    # Unpack the official ACP server once and point here (see docs/PLUGINS.md / RESTORE.md):
+    # Unpack the official ACP server once and point here (see RESTORE.md §4.3):
     # binaryPath: /home/<user>/.cache/dsh-antigravity-host/manual/agy_acp_server.par
     autoDownload: false
     modelOverrides:
@@ -485,3 +485,11 @@
   name: dsh-better-sidebar
   config:
     agentOpenTools: true
+- id: michengai-btw
+  name: "@michengai/dsh-btw"
+  config:
+    allowedTools:
+      - read
+      - glob
+      - grep
+    promptPrefix: ""
