@@ -1663,3 +1663,61 @@ button {
 .dsh-file-viewer-error {
   color: #e08a6c;
 }
+
+/* Syntax tokens for the file viewer (see src/behavior.js). */
+.dsh-tok-comment {
+  color: var(--claude-text-caption, #87837b);
+  font-style: italic;
+}
+
+.dsh-tok-string {
+  color: #a8c98f;
+}
+
+.dsh-tok-number {
+  color: #d9a26b;
+}
+
+.dsh-tok-keyword {
+  color: var(--claude-clay, #d97757);
+}
+
+.dsh-tok-type {
+  color: #d8c08a;
+}
+
+.dsh-tok-function {
+  color: #e4c48d;
+}
+
+/* Unified diff view. */
+.dsh-file-viewer-diff {
+  display: block;
+  gap: 0;
+}
+
+.dsh-diff-line {
+  display: block;
+  padding: 0 12px;
+  white-space: pre;
+}
+
+.dsh-diff-add {
+  background: rgba(126, 178, 112, 0.13);
+  color: #b6d3a0;
+}
+
+.dsh-diff-remove {
+  background: rgba(206, 118, 96, 0.14);
+  color: #e2a493;
+}
+
+.dsh-diff-hunk {
+  margin: 6px 0 2px;
+  background: rgba(120, 145, 200, 0.12);
+  color: #a9b7d9;
+}
+
+.dsh-diff-meta {
+  color: var(--claude-text-caption, #87837b);
+}

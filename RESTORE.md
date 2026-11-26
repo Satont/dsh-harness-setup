@@ -178,7 +178,9 @@ before a restart the browser keeps icons in `localStorage` and migrates them on 
 
 File links: messages that paste `file:///abs/path` become clickable. A left click opens the
 in-app viewer (`readBytes` over the workspace-files remote face, so absolute paths outside the
-workspace work); right-click offers **Открыть в DSH / Открыть в Zed / Показать папку в Zed /
+workspace work). The viewer highlights common languages (js/ts, rust, python, go, sql, graphql,
+yaml, sh, json, css/html, markdown) with a small built-in tokenizer and renders `.patch`/`.diff`
+(and diff-looking text) as a colored diff; right-click offers **Открыть в DSH / Открыть в Zed / Показать папку в Zed /
 Скопировать путь**. **Open in Zed** needs the host half of `dsh-claude-ui`
 (`POST /claude-ui/open`, spawns `zeditor -n <path>`), which only loads with the DSH process:
 before a restart the item copies the path and says so. The folder launch goes through the

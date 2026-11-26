@@ -7,7 +7,7 @@ unless noted. Local plugins are copied into the profile `plugins/` directory.
 
 | Bundle | Source | Purpose |
 |---|---|---|
-| `dsh-claude-ui` | `plugins/dsh-claude-ui` | Warm dark Claude-Code-like theme, plus the sidebar composition: workspaces under the panel list, Limits card and profile chips at the bottom, header gear for Settings, custom workspace icons (emoji or image, host route `/claude-ui/workspace-icons`) and file links: `file://` links open an in-app viewer, right-click offers Zed (`/claude-ui/open`, active after a DSH restart) |
+| `dsh-claude-ui` | `plugins/dsh-claude-ui` | Warm dark Claude-Code-like theme, plus the sidebar composition: workspaces under the panel list, Limits card and profile chips at the bottom, header gear for Settings, custom workspace icons (emoji or image, host route `/claude-ui/workspace-icons`) and file links: `file://` links open an in-app viewer with syntax highlighting and unified-diff rendering, right-click offers Zed (`/claude-ui/open`, active after a DSH restart) |
 | `dsh-inline-bash` | `plugins/inline-bash` | `!cmd` in composer, local execution, no model turn |
 | `dsh-worktree-lifecycle` | `plugins/worktree-lifecycle` | Cascade-delete DSH worktree on session delete; delete `dsh-*` branch, preserve a renamed user branch; per-project create hook (UI tab) |
 | `dsh-limits-strip` | `plugins/limits-strip` | Limits card in the left sidebar footer; click opens full Limits |

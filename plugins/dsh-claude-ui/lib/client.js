@@ -1673,6 +1673,64 @@ button {
 .dsh-file-viewer-error {
   color: #e08a6c;
 }
+
+/* Syntax tokens for the file viewer (see src/behavior.js). */
+.dsh-tok-comment {
+  color: var(--claude-text-caption, #87837b);
+  font-style: italic;
+}
+
+.dsh-tok-string {
+  color: #a8c98f;
+}
+
+.dsh-tok-number {
+  color: #d9a26b;
+}
+
+.dsh-tok-keyword {
+  color: var(--claude-clay, #d97757);
+}
+
+.dsh-tok-type {
+  color: #d8c08a;
+}
+
+.dsh-tok-function {
+  color: #e4c48d;
+}
+
+/* Unified diff view. */
+.dsh-file-viewer-diff {
+  display: block;
+  gap: 0;
+}
+
+.dsh-diff-line {
+  display: block;
+  padding: 0 12px;
+  white-space: pre;
+}
+
+.dsh-diff-add {
+  background: rgba(126, 178, 112, 0.13);
+  color: #b6d3a0;
+}
+
+.dsh-diff-remove {
+  background: rgba(206, 118, 96, 0.14);
+  color: #e2a493;
+}
+
+.dsh-diff-hunk {
+  margin: 6px 0 2px;
+  background: rgba(120, 145, 200, 0.12);
+  color: #a9b7d9;
+}
+
+.dsh-diff-meta {
+  color: var(--claude-text-caption, #87837b);
+}
 `;
 		if (typeof document !== "undefined" && document.querySelector('style[data-plugin-css="dsh-claude-ui/theme.css"]') === null) {
 			const tag = document.createElement("style");
@@ -2184,6 +2242,143 @@ button {
 		  return path.split('/').map((segment) => encodeURIComponent(segment).replace(/%3A/gi, ':')).join('/')
 		}
 
+		/** Language families the tiny highlighter knows; unknown files stay plain. */
+		const LANGUAGE_BY_EXT = {
+		  gql: 'graphql', graphql: 'graphql',
+		  js: 'js', mjs: 'js', cjs: 'js', jsx: 'js',
+		  ts: 'ts', tsx: 'ts', mts: 'ts',
+		  json: 'json', jsonc: 'json',
+		  yml: 'yaml', yaml: 'yaml',
+		  rs: 'rust', py: 'python', go: 'go', sql: 'sql',
+		  sh: 'sh', bash: 'sh', zsh: 'sh',
+		  toml: 'toml', ini: 'ini', conf: 'ini',
+		  css: 'css', scss: 'css', html: 'html', htm: 'html', xml: 'html', svg: 'html',
+		  md: 'md', markdown: 'md',
+		  patch: 'diff', diff: 'diff',
+		}
+
+		const KEYWORDS = {
+		  js: 'const let var function return if else for while do switch case break continue new class extends import from export default async await throw try catch finally typeof instanceof delete void yield of in this super null undefined true false',
+		  ts: 'const let var function return if else for while do switch case break continue new class extends implements interface type enum import from export default async await throw try catch finally typeof instanceof keyof as satisfies readonly namespace declare public private protected static void null undefined true false any unknown never string number boolean',
+		  rust: 'fn let mut const struct enum trait impl for while loop if else match return use mod pub crate self Self where async await move dyn ref as in break continue unsafe type static extern',
+		  python: 'def class return if elif else for while break continue import from as with try except finally raise pass lambda yield global nonlocal assert del in is not and or None True False async await match case',
+		  go: 'package import func var const type struct interface map chan go defer select case switch for range if else return break continue fallthrough nil true false',
+		  sql: 'select from where join left right inner outer on group by order having limit offset insert into values update set delete create table alter drop index and or not null is as distinct union all case when then else end',
+		  graphql: 'query mutation subscription fragment on extend type input enum union interface scalar schema directive implements repeatable',
+		  sh: 'if then else elif fi for while do done case esac function return export local set unset source alias echo cd exit',
+		  json: 'true false null',
+		  css: 'important media supports keyframes import',
+		  md: '',
+		}
+
+		const TYPES = {
+		  rust: 'String Vec Option Result Box Arc Rc HashMap BTreeMap Cow Self',
+		  ts: 'Promise Record Partial Omit Pick Readonly Array Map Set Date Error',
+		}
+
+		/** Escape text for safe innerHTML assembly. */
+		function escapeHtml(value) {
+		  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+		}
+
+		function detectLanguage(path, text) {
+		  const ext = path.slice(path.lastIndexOf('.') + 1).toLowerCase()
+		  if (LANGUAGE_BY_EXT[ext]) return LANGUAGE_BY_EXT[ext]
+		  if (/^diff --git/m.test(text) || /^---\s+\S+\n\+\+\+\s+\S+/m.test(text)) return 'diff'
+		  if (/^\s*\{[\s\S]*\}\s*$/.test(text.slice(0, 400))) return 'json'
+		  if (/\b(query|mutation|fragment)\s+\w+/.test(text.slice(0, 400))) return 'graphql'
+		  return 'plain'
+		}
+
+		/** Highlight one line; block comments carry state across lines. */
+		function highlightLine(line, lang, state) {
+		  const escaped = escapeHtml(line)
+		  if (lang === 'plain' || lang === 'diff') return escaped
+		  const keywords = new Set((KEYWORDS[lang] ?? '').split(' ').filter(Boolean))
+		  const types = new Set((TYPES[lang] ?? '').split(' ').filter(Boolean))
+		  const commentPrefix = lang === 'json'
+		    ? null
+		    : lang === 'sql' ? '--'
+		    : ['python', 'sh', 'yaml', 'toml', 'ini', 'md'].includes(lang) ? '#'
+		    : '//'
+
+		  const text = escaped
+		  let index = 0
+		  let out = ''
+
+		  if (state.blockComment) {
+		    const close = text.indexOf('*/')
+		    if (close === -1) return `<span class="dsh-tok-comment">${text}</span>`
+		    out += `<span class="dsh-tok-comment">${text.slice(0, close + 2)}</span>`
+		    index = close + 2
+		    state.blockComment = false
+		  }
+
+		  const pattern = /(\/\*[\s\S]*?\*\/|\/\/[^\n]*|#[^\n]*|--[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][A-Za-z0-9_$]*\b|[^\sA-Za-z0-9_$]+)/g
+		  let match
+		  while ((match = pattern.exec(text)) !== null) {
+		    const token = match[0]
+		    const start = match.index
+		    if (start < index) continue
+		    out += text.slice(index, start)
+		    index = start + token.length
+
+		    if (token.startsWith('/*') && !token.endsWith('*/')) {
+		      state.blockComment = true
+		      out += `<span class="dsh-tok-comment">${token}</span>`
+		      out += text.slice(index)
+		      return out
+		    }
+		    if (/^(\/\/|#|--)/.test(token) && commentPrefix !== null) {
+		      out += `<span class="dsh-tok-comment">${token}</span>`
+		      continue
+		    }
+		    if (/^["'`]/.test(token)) {
+		      out += `<span class="dsh-tok-string">${token}</span>`
+		      continue
+		    }
+		    if (/^\d/.test(token)) {
+		      out += `<span class="dsh-tok-number">${token}</span>`
+		      continue
+		    }
+		    if (keywords.has(token)) {
+		      out += `<span class="dsh-tok-keyword">${token}</span>`
+		      continue
+		    }
+		    if (types.has(token) || /^[A-Z][A-Za-z0-9_]*$/.test(token)) {
+		      out += `<span class="dsh-tok-type">${token}</span>`
+		      continue
+		    }
+		    if (/^[A-Za-z_$]/.test(token) && /^\s*\(/.test(text.slice(index))) {
+		      out += `<span class="dsh-tok-function">${token}</span>`
+		      continue
+		    }
+		    out += token
+		  }
+		  out += text.slice(index)
+		  return out
+		}
+
+		/** Render a unified diff with add/remove emphasis. */
+		function renderDiff(lines) {
+		  const wrap = document.createElement('div')
+		  wrap.className = 'dsh-file-viewer-code dsh-file-viewer-diff'
+		  const code = document.createElement('pre')
+		  code.className = 'dsh-file-viewer-text'
+		  for (const line of lines) {
+		    const span = document.createElement('span')
+		    span.className = 'dsh-diff-line'
+		    if (/^@@/.test(line)) span.classList.add('dsh-diff-hunk')
+		    else if (/^(diff --git|index |--- |\+\+\+ )/.test(line)) span.classList.add('dsh-diff-meta')
+		    else if (line.startsWith('+')) span.classList.add('dsh-diff-add')
+		    else if (line.startsWith('-')) span.classList.add('dsh-diff-remove')
+		    span.textContent = `${line}\n`
+		    code.appendChild(span)
+		  }
+		  wrap.appendChild(code)
+		  return wrap
+		}
+
 		/** Read one absolute file through the workspace-files remote face. */
 		async function readFileBytes(path) {
 		  const sessionId = currentSessionId()
@@ -2293,20 +2488,27 @@ button {
 		    }
 		    const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
 		    const truncated = text.length > 200000 ? `${text.slice(0, 200000)}\n… (файл обрезан)` : text
-		    const scroll = document.createElement('div')
-		    scroll.className = 'dsh-file-viewer-code'
 		    const lines = truncated.split('\n')
-		    const gutterWidth = `${String(lines.length).length}ch`
-		    const gutter = document.createElement('pre')
-		    gutter.className = 'dsh-file-viewer-gutter'
-		    gutter.style.width = gutterWidth
-		    gutter.textContent = lines.map((_, index) => index + 1).join('\n')
-		    const code = document.createElement('pre')
-		    code.className = 'dsh-file-viewer-text'
-		    code.textContent = truncated
-		    scroll.append(gutter, code)
 		    body.textContent = ''
-		    body.appendChild(scroll)
+		    const language = detectLanguage(path, text)
+		    if (language === 'diff') {
+		      body.appendChild(renderDiff(lines))
+		    } else {
+		      const scroll = document.createElement('div')
+		      scroll.className = 'dsh-file-viewer-code'
+		      const gutterWidth = `${String(lines.length).length}ch`
+		      const gutter = document.createElement('pre')
+		      gutter.className = 'dsh-file-viewer-gutter'
+		      gutter.style.width = gutterWidth
+		      gutter.textContent = lines.map((_, index) => index + 1).join('\n')
+		      const code = document.createElement('pre')
+		      code.className = 'dsh-file-viewer-text'
+		      code.dataset.lang = language
+		      const state = { blockComment: false }
+		      code.innerHTML = lines.map((line) => highlightLine(line, language, state)).join('\n')
+		      scroll.append(gutter, code)
+		      body.appendChild(scroll)
+		    }
 		  } catch (error) {
 		    body.textContent = `Не удалось прочитать файл: ${error instanceof Error ? error.message : String(error)}`
 		    body.classList.add('dsh-file-viewer-error')
