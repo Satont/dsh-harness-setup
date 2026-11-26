@@ -87,7 +87,7 @@ const indentedBehavior = behavior
   .join("\n");
 
 const tail = `
-\t\texports.inject = ["slots"];
+\t\texports.inject = ["slots", "uiSession", "remote", "remote.workspaceFiles"];
 \t\texports.apply = apply;
 \t\treturn module.exports;
 \t}

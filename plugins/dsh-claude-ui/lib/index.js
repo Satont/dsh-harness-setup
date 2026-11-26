@@ -11,9 +11,11 @@
  *   PUT  → { workspaceId, icon: { kind: 'emoji' | 'image', value, mime? } | null }
  *          answers with the whole map after the merge.
  */
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
+import { dirname, isAbsolute, join } from 'node:path'
 import { homedir } from 'node:os'
+import { access } from 'node:fs/promises'
 
 const ROUTE = '/claude-ui/workspace-icons'
 const FILE_NAME = 'workspace-icons.json'
@@ -150,6 +152,77 @@ export function apply(ctx) {
     () => ctx.webServer.register({ kind: 'exact', path: ROUTE, handler }),
     'dsh-claude-ui: /claude-ui/workspace-icons route',
   )
+
+  const openHandler = async (req, res) => {
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      const editor = await firstEditor()
+      sendJson(res, 200, { editor: editor ?? null, name: editor ? 'zed' : null })
+      return
+    }
+    if (req.method !== 'POST' && req.method !== 'PUT') {
+      res.writeHead(405, { Allow: 'GET, HEAD, POST' })
+      res.end()
+      return
+    }
+    const contentType = String(req.headers?.['content-type'] ?? '').toLowerCase()
+    if (!contentType.includes('application/json')) {
+      sendText(res, 415, 'claude-ui: opening a file requires application/json')
+      return
+    }
+    let target
+    try {
+      const payload = JSON.parse(await readBody(req))
+      target = String(payload?.path ?? '')
+      if (!target || target.length > 4096 || target.includes('\u0000') || !isAbsolute(target)) {
+        sendText(res, 400, 'claude-ui: path must be an absolute file path')
+        return
+      }
+      const info = await stat(target)
+      if (!info.isFile()) {
+        sendText(res, 400, 'claude-ui: path is not a regular file')
+        return
+      }
+    } catch (error) {
+      sendText(res, 400, `claude-ui: ${error instanceof Error ? error.message : String(error)}`)
+      return
+    }
+    const editor = await firstEditor()
+    if (!editor) {
+      sendJson(res, 503, { opened: false, reason: 'no editor CLI on PATH (tried zeditor, zed, zed-editor)' })
+      return
+    }
+    try {
+      const child = spawn(editor, ['-n', target], { detached: true, stdio: 'ignore' })
+      child.unref()
+      sendJson(res, 200, { opened: true, editor })
+    } catch (error) {
+      sendText(res, 500, `claude-ui: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  ctx.effect(
+    () => ctx.webServer.register({ kind: 'exact', path: '/claude-ui/open', handler: openHandler }),
+    'dsh-claude-ui: /claude-ui/open route',
+  )
+}
+
+/** Editor CLIs tried in order for "open in editor"; first existing one wins. */
+const EDITOR_CLI = ['zeditor', 'zed', 'zed-editor']
+
+async function firstEditor() {
+  for (const candidate of EDITOR_CLI) {
+    for (const dir of (process.env.PATH ?? '').split(':')) {
+      if (!dir) continue
+      const file = join(dir, candidate)
+      try {
+        await access(file)
+        return file
+      } catch {
+        /* keep looking */
+      }
+    }
+  }
+  return undefined
 }
 
 export const inject = ['webServer']

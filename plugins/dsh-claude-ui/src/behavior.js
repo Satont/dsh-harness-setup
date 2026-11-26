@@ -463,10 +463,368 @@ function observeSidebar() {
 }
 
 /**
+ * File links in messages.
+ *
+ * Agents often paste `file:///abs/path` links; the browser cannot open those and
+ * nothing happens. A left click (or the first menu item) routes the path into
+ * DSH's own file viewer through a `dsh-resource://file/session/<id>/<path>`
+ * address, which accepts absolute paths outside the workspace. The context menu
+ * adds "Open in Zed" (host route, active after the next DSH restart) next to the
+ * built-in folder launch and a copy-path action.
+ */
+const FILE_MENU_ATTR = 'data-dsh-file-menu'
+let clientContext = null
+let fileMenu = null
+
+function currentSessionId() {
+  try {
+    return clientContext?.uiSession?.adapter?.current?.getSnapshot()?.key
+  } catch {
+    return undefined
+  }
+}
+
+/** Absolute path behind a `file://` link, or undefined for anything else. */
+function pathOfFileLink(anchor) {
+  const href = anchor.getAttribute('href')
+  if (!href || !href.startsWith('file://')) return undefined
+  try {
+    const url = new URL(href)
+    if (url.hostname && url.hostname !== 'localhost') return undefined
+    const path = decodeURIComponent(url.pathname)
+    return path.startsWith('/') ? path : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function encodePath(path) {
+  return path.split('/').map((segment) => encodeURIComponent(segment).replace(/%3A/gi, ':')).join('/')
+}
+
+/** Read one absolute file through the workspace-files remote face. */
+async function readFileBytes(path) {
+  const sessionId = currentSessionId()
+  if (!sessionId) throw new Error('нет активной сессии')
+  const result = await clientContext.remote.workspaceFiles.readBytes(sessionId, path, {}, new AbortController().signal)
+  if (!result?.ok) {
+    const message = result?.error?.message ?? result?.error?.code ?? 'файл не прочитан'
+    throw new Error(String(message))
+  }
+  const value = result.value ?? {}
+  let bytes
+  const data = value.data
+  if (data instanceof Uint8Array) bytes = data
+  else if (data instanceof ArrayBuffer) bytes = new Uint8Array(data)
+  else if (typeof data === 'string') {
+    // The wire may carry base64 instead of raw bytes.
+    const binary = atob(data)
+    bytes = new Uint8Array(binary.length)
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+  } else if (Array.isArray(data)) bytes = new Uint8Array(data)
+  return { bytes: bytes ?? new Uint8Array(), size: value.size ?? bytes?.length ?? 0, absolutePath: value.absolutePath ?? path }
+}
+
+/** Open one absolute path in the built-in in-app viewer. */
+async function openInDsh(path) {
+  const name = path.slice(path.lastIndexOf('/') + 1)
+  const dialog = document.createElement('div')
+  dialog.className = 'dsh-file-viewer-mask'
+  dialog.innerHTML = ''
+  const card = document.createElement('div')
+  card.className = 'dsh-file-viewer'
+  card.setAttribute('role', 'dialog')
+  card.setAttribute('aria-label', `Файл ${name}`)
+
+  const header = document.createElement('header')
+  header.className = 'dsh-file-viewer-head'
+  const title = document.createElement('div')
+  title.className = 'dsh-file-viewer-title'
+  const fileName = document.createElement('strong')
+  fileName.textContent = name
+  const filePath = document.createElement('span')
+  filePath.className = 'dsh-file-viewer-path'
+  filePath.textContent = path
+  title.append(fileName, filePath)
+
+  const actions = document.createElement('div')
+  actions.className = 'dsh-file-viewer-actions'
+  const button = (label, onClick) => {
+    const node = document.createElement('button')
+    node.type = 'button'
+    node.className = 'dsh-file-viewer-button'
+    node.textContent = label
+    node.addEventListener('click', onClick)
+    return node
+  }
+  actions.append(
+    button('В Zed', () => void openInZed(path)),
+    button('Копировать путь', async () => {
+      await copyText(path)
+      toast('Путь скопирован')
+    }),
+    button('Закрыть', () => dialog.remove()),
+  )
+  header.append(title, actions)
+
+  const body = document.createElement('div')
+  body.className = 'dsh-file-viewer-body'
+  body.textContent = 'Чтение…'
+  card.append(header, body)
+  dialog.appendChild(card)
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) dialog.remove()
+  })
+  const onKey = (event) => {
+    if (event.key === 'Escape') {
+      dialog.remove()
+      document.removeEventListener('keydown', onKey, true)
+    }
+  }
+  document.addEventListener('keydown', onKey, true)
+  document.body.appendChild(dialog)
+
+  try {
+    const { bytes, size } = await readFileBytes(path)
+    if (bytes.length === 0 && size > 0) throw new Error('пустой ответ')
+    const isImage = /\.(png|jpe?g|webp|gif|bmp|ico|svg)$/i.test(path)
+    const binary = bytes.subarray(0, 2048).includes(0)
+    if (isImage && !path.toLowerCase().endsWith('.svg')) {
+      const mime = path.toLowerCase().endsWith('.png') ? 'image/png'
+        : /\.jpe?g$/i.test(path) ? 'image/jpeg'
+        : path.toLowerCase().endsWith('.webp') ? 'image/webp'
+        : path.toLowerCase().endsWith('.gif') ? 'image/gif'
+        : 'application/octet-stream'
+      const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
+      const image = document.createElement('img')
+      image.className = 'dsh-file-viewer-image'
+      image.src = url
+      image.alt = name
+      image.addEventListener('load', () => URL.revokeObjectURL(url), { once: true })
+      body.textContent = ''
+      body.appendChild(image)
+      return
+    }
+    if (binary) {
+      body.textContent = `Бинарный файл · ${formatBytes(size)}`
+      return
+    }
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+    const truncated = text.length > 200000 ? `${text.slice(0, 200000)}\n… (файл обрезан)` : text
+    const scroll = document.createElement('div')
+    scroll.className = 'dsh-file-viewer-code'
+    const lines = truncated.split('\n')
+    const gutterWidth = `${String(lines.length).length}ch`
+    const gutter = document.createElement('pre')
+    gutter.className = 'dsh-file-viewer-gutter'
+    gutter.style.width = gutterWidth
+    gutter.textContent = lines.map((_, index) => index + 1).join('\n')
+    const code = document.createElement('pre')
+    code.className = 'dsh-file-viewer-text'
+    code.textContent = truncated
+    scroll.append(gutter, code)
+    body.textContent = ''
+    body.appendChild(scroll)
+  } catch (error) {
+    body.textContent = `Не удалось прочитать файл: ${error instanceof Error ? error.message : String(error)}`
+    body.classList.add('dsh-file-viewer-error')
+  }
+}
+
+function formatBytes(size) {
+  if (!Number.isFinite(size)) return ''
+  if (size < 1024) return `${size} Б`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} КБ`
+  return `${(size / (1024 * 1024)).toFixed(1)} МБ`
+}
+
+/** Ask the host half to launch Zed on one path (needs the host route). */
+async function openInZed(path) {
+  try {
+    const response = await fetch('/claude-ui/open', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    })
+    if (response.ok) {
+      toast('Открыл в Zed')
+      return
+    }
+    if ([404, 405, 503].includes(response.status)) throw new Error('host-route-missing')
+    throw new Error(`open answered ${response.status}`)
+  } catch (error) {
+    await copyText(path)
+    const missing = error instanceof Error && error.message === 'host-route-missing'
+    toast(missing ? 'Хост-часть включится после рестарта DSH — путь скопирован' : 'Путь скопирован (Zed не открылся)')
+  }
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return
+  } catch {
+    /* fall through to the legacy path */
+  }
+  const field = document.createElement('textarea')
+  field.value = text
+  field.style.position = 'fixed'
+  field.style.opacity = '0'
+  document.body.appendChild(field)
+  field.select()
+  try {
+    document.execCommand('copy')
+  } catch {
+    /* nothing else to try */
+  }
+  field.remove()
+}
+
+let toastNode = null
+function toast(message) {
+  toastNode?.remove()
+  const node = document.createElement('div')
+  node.className = 'dsh-toast'
+  node.setAttribute('role', 'status')
+  node.textContent = message
+  document.body.appendChild(node)
+  toastNode = node
+  setTimeout(() => {
+    node.classList.add('dsh-toast-out')
+    setTimeout(() => node.remove(), 220)
+  }, 2600)
+}
+
+function closeFileMenu() {
+  fileMenu?.remove()
+  fileMenu = null
+}
+
+/** Right-click menu for a file link. */
+function openFileMenu(anchor, path, x, y) {
+  closeFileMenu()
+  const menu = document.createElement('div')
+  menu.className = 'dsh-file-menu'
+  menu.setAttribute(FILE_MENU_ATTR, '')
+  menu.setAttribute('role', 'menu')
+
+  const entry = (label, hint, action) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'dsh-file-menu-item'
+    button.setAttribute('role', 'menuitem')
+    const text = document.createElement('span')
+    text.className = 'dsh-file-menu-label'
+    text.textContent = label
+    button.appendChild(text)
+    if (hint) {
+      const note = document.createElement('span')
+      note.className = 'dsh-file-menu-hint'
+      note.textContent = hint
+      button.appendChild(note)
+    }
+    button.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      closeFileMenu()
+      void action()
+    })
+    menu.appendChild(button)
+  }
+
+  entry('Открыть в DSH', 'боковая панель', () => openInDsh(path))
+  entry('Открыть в Zed', 'файл', () => openInZed(path))
+  entry('Показать папку в Zed', path.slice(0, path.lastIndexOf('/')), () => openFolderInZed(path))
+  entry('Скопировать путь', '', async () => {
+    await copyText(path)
+    toast('Путь скопирован')
+  })
+
+  document.body.appendChild(menu)
+  const box = menu.getBoundingClientRect()
+  menu.style.left = `${Math.min(x, globalThis.innerWidth - box.width - 8)}px`
+  menu.style.top = `${Math.min(y, globalThis.innerHeight - box.height - 8)}px`
+  fileMenu = menu
+}
+
+/** Folder launch through the built-in open-in-app route (available today). */
+async function openFolderInZed(path) {
+  const folder = path.slice(0, path.lastIndexOf('/'))
+  try {
+    const response = await fetch('/open-in-app/open', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app: 'zed', path: folder }),
+    })
+    if (!response.ok) throw new Error(`open answered ${response.status}`)
+    toast('Открыл папку в Zed')
+  } catch {
+    await copyText(folder)
+    toast('Папка скопирована — редактор не принял запрос')
+  }
+}
+
+document.addEventListener(
+  'click',
+  (event) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    if (target.closest(`[${FILE_MENU_ATTR}]`)) return
+    const anchor = target.closest('a[href^="file://"]')
+    if (!anchor) {
+      closeFileMenu()
+      return
+    }
+    const path = pathOfFileLink(anchor)
+    if (!path) return
+    event.preventDefault()
+    event.stopPropagation()
+    openInDsh(path)
+  },
+  true,
+)
+
+document.addEventListener(
+  'contextmenu',
+  (event) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const anchor = target.closest('a[href^="file://"]')
+    if (!anchor) {
+      closeFileMenu()
+      return
+    }
+    const path = pathOfFileLink(anchor)
+    if (!path) return
+    event.preventDefault()
+    event.stopPropagation()
+    openFileMenu(anchor, path, event.clientX, event.clientY)
+  },
+  true,
+)
+
+document.addEventListener('click', (event) => {
+  if (!fileMenu) return
+  const target = event.target
+  if (target instanceof Element && target.closest(`[${FILE_MENU_ATTR}]`)) return
+  closeFileMenu()
+})
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeFileMenu()
+    if (iconPicker) closeIconPicker()
+  }
+})
+
+/**
  * Client plugin entry.
  * @param ctx - client context; `slots` is declared in the module's inject list.
  */
 export function apply(ctx) {
+  clientContext = ctx
   try {
     ctx.slots.inject('settings.launcher', () =>
       ctx.slots.register(

@@ -31,6 +31,9 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
   (`kimi-coding`) plus the default DeepSeek route
 - Google Antigravity ACP: `dsh-bundle-antigravity-host@0.1.46` — official `agy` ACP
   agent, Gemini 4 Neon/Hydrogen families, OAuth in Settings → Antigravity ACP
+- File links: `file:///abs/path` links in messages open an in-app viewer (line numbers, images)
+  on click; right-click offers **Open in Zed**, **Show folder in Zed**, **Copy path**.
+  The Zed launch uses a small host route and becomes active after the next DSH restart.
 - Extras: `impeccable` skill installed globally under `~/.dsh/skills/impeccable`
 
 ## What is in the repository
@@ -53,6 +56,10 @@ stored here. See [SECRETS.md](SECRETS.md) and [.env.example](.env.example).
 | Sidebar composition | Workspace icon menu |
 |---|---|
 | ![Sidebar](docs/screenshots/sidebar-workspaces.png) | ![Workspace icon](docs/screenshots/workspace-icon-menu.png) |
+
+| File link viewer | File link menu |
+|---|---|
+| ![File viewer](docs/screenshots/file-viewer.png) | ![File menu](docs/screenshots/file-link-menu.png) |
 
 | Limits page | Sidebar card |
 |---|---|

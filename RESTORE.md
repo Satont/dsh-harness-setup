@@ -176,6 +176,14 @@ served by the host half of `dsh-claude-ui` (`lib/index.js`): `GET/PUT /claude-ui
 writing `$DSH_HOME/workspace-icons.json`. The host half only loads with the DSH process —
 before a restart the browser keeps icons in `localStorage` and migrates them on the next load.
 
+File links: messages that paste `file:///abs/path` become clickable. A left click opens the
+in-app viewer (`readBytes` over the workspace-files remote face, so absolute paths outside the
+workspace work); right-click offers **Открыть в DSH / Открыть в Zed / Показать папку в Zed /
+Скопировать путь**. **Open in Zed** needs the host half of `dsh-claude-ui`
+(`POST /claude-ui/open`, spawns `zeditor -n <path>`), which only loads with the DSH process:
+before a restart the item copies the path and says so. The folder launch goes through the
+built-in `/open-in-app/open` route and works without a restart.
+
 Selectors in `src/behavior.js` use the shell's hashed classes (`.hHd-Xa_*`, `.YDXeBa_*`,
 `.ZyjtZG_*`); after a DSH upgrade re-check them if the composition or the menu entry stops
 applying.
